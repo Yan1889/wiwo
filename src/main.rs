@@ -9,7 +9,10 @@ mod neural;
 fn main() {
     for hidden in 2..=4 {
         let mut net = NeuralNetBuilder::new(vec![2, hidden, 1])
-            .set_activation_functions(vec![ActivationFunction::Tanh, ActivationFunction::Sigmoid])
+            .set_activation_functions(vec![
+                ActivationFunction::Sigmoid,
+                ActivationFunction::Sigmoid,
+            ])
             .set_learning_rate(0.1)
             .build();
 

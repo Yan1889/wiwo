@@ -12,6 +12,12 @@ impl ActivationFunction {
     fn sigmoid(x: f64) -> f64 {
         1.0 / ((-x).exp() + 1.0)
     }
+    fn map(self, mat: &Matrix) -> Matrix {
+        mat.map(|x| self.apply(x))
+    }
+    fn map_derivative(self, mat: &Matrix) -> Matrix {
+        mat.map(|x| self.derivative(x))
+    }
     fn apply(self, x: f64) -> f64 {
         match self {
             Self::ReLU => x.max(0.0),
@@ -91,7 +97,7 @@ impl NeuralNet {
                 .collect(),
             weights: layer_sizes
                 .array_windows()
-                .map(|&[m, n]| Matrix::new_random(n, m))
+                .map(|&[m, n]| Matrix::new_random(m, n))
                 .collect(),
             afs,
             layer_sizes,
@@ -102,7 +108,7 @@ impl NeuralNet {
     pub fn forward(&self, mut xs: Matrix) -> Matrix {
         assert_eq!(xs.dimensions(), (self.layer_sizes[0], 1));
         for l in 0..self.depth() {
-            xs = (&(&self.weights[l] * &xs) + &self.biases[l]).map(|x| self.afs[l].apply(x));
+            xs = self.afs[l].map(&(&(&self.weights[l].transposed() * &xs) + &self.biases[l]));
         }
         xs
     }
@@ -111,26 +117,28 @@ impl NeuralNet {
         assert_eq!(input.dimensions(), (self.layer_sizes[0], 1));
         assert_eq!(target.dimensions(), (*self.layer_sizes.last().unwrap(), 1));
 
+        // in the beginning we have an 'a'
+        // layer = (w, z, a)
         let mut a = vec![input.clone()];
-        let mut z = vec![input];
+        let mut z = vec![];
         for l in 0..self.depth() {
-            z.push(&(&self.weights[l] * a.last().unwrap()) + &self.biases[l]);
-            a.push(z.last().unwrap().map(|x| self.afs[l].apply(x)));
+            z.push(&(&self.weights[l].transposed() * a.last().unwrap()) + &self.biases[l]);
+            a.push(self.afs[l].map(z.last().unwrap()));
         }
 
         // ŷ - y
-        let mut deltas = (a.last().unwrap() - &target).map(|x| 2.0 * x);
+        let mut deltas = &(a.last().unwrap() - &target) * 2.0;
 
         for l in (0..self.depth()).rev() {
             // delta is the loss w.r.t. the last activations
             // make delta the loss w.r.t. the weighted sum z by multiplying with f'(z)
-            deltas = deltas.element_mul(&z[l + 1].map(|x| self.afs[l].derivative(x)));
+            deltas = deltas.element_mul(&self.afs[l].map_derivative(&z[l]));
             // update bias, bias directly affects z
-            self.biases[l] -= &deltas.map(|x| x * self.learning_rate);
+            self.biases[l] -= &(&deltas * self.learning_rate);
             // update weights
-            self.weights[l] -= &(&a[l] * &deltas.transpose()).transpose();
+            self.weights[l] -= &(&(&a[l] * &deltas.transposed()) * self.learning_rate);
             // update deltas
-            deltas = (&deltas.transpose() * &self.weights[l]).transpose();
+            deltas = &self.weights[l] * &deltas;
         }
     }
 

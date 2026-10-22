@@ -40,7 +40,7 @@ impl Matrix {
         }
         Self(res)
     }
-    pub fn transpose(&self) -> Self {
+    pub fn transposed(&self) -> Self {
         let (m, n) = self.dimensions();
         let mut res = vec![vec![0.0; m]; n];
         for i in 0..n {
@@ -110,6 +110,20 @@ impl Mul<&Matrix> for &Matrix {
                 for k in 0..self_n {
                     res[i][j] += self.0[i][k] * other.0[k][j];
                 }
+            }
+        }
+        Matrix(res)
+    }
+}
+
+impl Mul<f64> for &Matrix {
+    type Output = Matrix;
+    fn mul(self, x: f64) -> Self::Output {
+        let (m, n) = self.dimensions();
+        let mut res = vec![vec![0.0; n]; m];
+        for i in 0..m {
+            for j in 0..n {
+                res[i][j] = self.0[i][j] * x;
             }
         }
         Matrix(res)
