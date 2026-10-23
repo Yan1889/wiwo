@@ -1,3 +1,5 @@
+use rand::seq::SliceRandom;
+
 use crate::linalg::Matrix;
 
 #[derive(Debug, Clone, Copy)]
@@ -45,6 +47,24 @@ impl ActivationFunction {
             Self::Sigmoid => Self::sigmoid(x) * (1.0 - Self::sigmoid(x)),
             Self::Tanh => 1.0 - x.tanh() * x.tanh(),
         }
+    }
+}
+
+pub struct Dataset(pub Vec<(Vec<f64>, Vec<f64>)>);
+impl Dataset {
+    pub fn new(mut data: Vec<(Vec<f64>, Vec<f64>)>) -> Self {
+        data.shuffle(&mut rand::rng());
+        for [(i1, o1), (i2, o2)] in data.array_windows() {
+            assert_eq!(i1.len(), i2.len());
+            assert_eq!(o1.len(), o2.len());
+        }
+        Self(data)
+    }
+    /// 80/20
+    pub fn split(self) -> (Self, Self) {
+        let mut a = self.0;
+        let b = a.split_off(a.len() * 4 / 5);
+        (Self::new(a), Self::new(b))
     }
 }
 
@@ -113,7 +133,23 @@ impl NeuralNet {
         xs
     }
 
-    pub fn train(&mut self, input: Matrix, target: Matrix) {
+    pub fn mse(&self, dataset: &Dataset) -> f64 {
+        let mut res = 0.0;
+        for (input, target) in dataset.0.clone() {
+            let diff = &Matrix::new_column(target) - &self.forward(Matrix::new_column(input));
+            res += diff.reduce(|acc, x| acc + x * x, 0.0);
+        }
+        res / dataset.0.len() as f64
+    }
+    pub fn train(&mut self, dataset: &Dataset, epochs: usize) {
+        for _ in 0..epochs {
+            for (input, target) in dataset.0.clone() {
+                self.sgd(Matrix::new_column(input), Matrix::new_column(target));
+            }
+        }
+    }
+
+    fn sgd(&mut self, input: Matrix, target: Matrix) {
         assert_eq!(input.dimensions(), (self.layer_sizes[0], 1));
         assert_eq!(target.dimensions(), (*self.layer_sizes.last().unwrap(), 1));
 

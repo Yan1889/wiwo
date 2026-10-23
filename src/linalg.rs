@@ -61,6 +61,15 @@ impl Matrix {
         }
         Self(res)
     }
+    pub fn reduce<T>(&self, f: impl Fn(T, f64) -> T, mut acc: T) -> T {
+        let (m, n) = self.dimensions();
+        for i in 0..m {
+            for j in 0..n {
+                acc = f(acc, self.0[i][j]);
+            }
+        }
+        acc
+    }
 }
 
 impl Add<&Matrix> for &Matrix {
