@@ -1,5 +1,7 @@
+use std::f64::consts::TAU;
+
 use macroquad::{
-    color::{BLACK, BLUE, Color, GREEN, ORANGE, RED, VIOLET, WHITE},
+    color::{BLACK, BLUE, Color, RED, WHITE},
     shapes::{draw_circle, draw_line, draw_rectangle},
     text::draw_text,
     time::draw_fps,
@@ -7,36 +9,22 @@ use macroquad::{
 };
 
 use crate::{
+    data::Dataset,
     linalg::Matrix,
-    neural::{ActivationFunction, Dataset, NeuralNetBuilder},
+    neural::{ActivationFunction, NeuralNetBuilder},
 };
 
+mod data;
 mod linalg;
 mod neural;
 
 #[macroquad::main("XOR-Loss")]
 async fn main() {
-    xor_plane().await;
+    class_plane().await;
 }
 
 fn iris() {
-    let csv = std::fs::read_to_string("data/iris.csv").unwrap();
-    let mut data = Vec::<(Vec<f64>, Vec<f64>)>::new();
-    for l in csv.lines().skip(1) {
-        let row = l.split(',').skip(1).collect::<Vec<&str>>();
-        let input = (0..4)
-            .map(|i| row[i].parse::<f64>().unwrap())
-            .collect::<Vec<f64>>();
-        let mut label = vec![0.0; 3];
-        label[match row[4] {
-            "Iris-setosa" => 0,
-            "Iris-versicolor" => 1,
-            "Iris-virginica" => 2,
-            _ => unreachable!(),
-        }] = 1.0;
-        data.push((input, label));
-    }
-    let (train, test) = Dataset::new(data).split();
+    let (train, test) = Dataset::get_iris().split();
 
     let mut net = NeuralNetBuilder::new(vec![4, 10, 10, 3])
         .set_activation_functions(vec![
@@ -50,6 +38,61 @@ fn iris() {
     dbg!(net.mse(&test));
     net.train(&train, 50);
     dbg!(net.mse(&test));
+}
+
+async fn class_plane() {
+    let mut net = NeuralNetBuilder::new(vec![2, 8, 8, 1])
+        .set_activation_functions(vec![
+            ActivationFunction::Tanh,
+            ActivationFunction::Tanh,
+            ActivationFunction::Sigmoid,
+        ])
+        .set_learning_rate(0.05)
+        .build();
+
+    let dataset = Dataset::get_heart();
+
+    loop {
+        net.train(&dataset, 10);
+
+        clear_background(BLACK);
+
+        let resolution = 300;
+        for i in 0..=resolution {
+            for j in 0..=resolution {
+                let x = i as f32 / resolution as f32;
+                let y = j as f32 / resolution as f32;
+                let w = 1.0 / resolution as f32;
+                let h = 1.0 / resolution as f32;
+                let r = net.forward(Matrix::new_column(vec![x as f64, y as f64])).0[0][0];
+                draw_rectangle(
+                    x * screen_width(),
+                    (1.0 - y) * screen_height(),
+                    w * screen_width(),
+                    h * screen_height(),
+                    if (r - 0.5).abs() < 0.07 {
+                        WHITE
+                        // Color::new(1.0 - r as f32, 0.0, r as f32, 0.5)
+                    } else {
+                        Color::new(1.0 - r as f32, 0.0, r as f32, 0.5)
+                    },
+                );
+            }
+        }
+        for (input, output) in dataset.data() {
+            let x = input[0];
+            let y = input[1];
+            let l = output[0];
+            draw_circle(
+                x as f32 * screen_width(),
+                (1.0 - y as f32) * screen_height(),
+                0.003 * screen_width(),
+                if l > 0.5 { BLUE } else { RED },
+            );
+        }
+        draw_fps();
+        next_frame().await
+    }
 }
 
 async fn xor_plane() {
@@ -94,7 +137,7 @@ async fn xor_plane() {
                 );
             }
         }
-        for (input, output) in &dataset.0 {
+        for (input, output) in dataset.data() {
             let x = input[0];
             let y = input[1];
             let l = output[0];

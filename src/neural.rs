@@ -1,6 +1,4 @@
-use rand::seq::SliceRandom;
-
-use crate::linalg::Matrix;
+use crate::{data::Dataset, linalg::Matrix};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ActivationFunction {
@@ -50,24 +48,6 @@ impl ActivationFunction {
     }
 }
 
-pub struct Dataset(pub Vec<(Vec<f64>, Vec<f64>)>);
-impl Dataset {
-    pub fn new(mut data: Vec<(Vec<f64>, Vec<f64>)>) -> Self {
-        data.shuffle(&mut rand::rng());
-        for [(i1, o1), (i2, o2)] in data.array_windows() {
-            assert_eq!(i1.len(), i2.len());
-            assert_eq!(o1.len(), o2.len());
-        }
-        Self(data)
-    }
-    /// 80/20
-    pub fn split(self) -> (Self, Self) {
-        let mut a = self.0;
-        let b = a.split_off(a.len() * 4 / 5);
-        (Self::new(a), Self::new(b))
-    }
-}
-
 pub struct NeuralNetBuilder {
     afs: Vec<ActivationFunction>,
     learning_rate: f64,
@@ -94,6 +74,7 @@ impl NeuralNetBuilder {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct NeuralNet {
     biases: Vec<Matrix>,
     weights: Vec<Matrix>,
@@ -135,15 +116,15 @@ impl NeuralNet {
 
     pub fn mse(&self, dataset: &Dataset) -> f64 {
         let mut res = 0.0;
-        for (input, target) in dataset.0.clone() {
+        for (input, target) in dataset.data().to_vec() {
             let diff = &Matrix::new_column(target) - &self.forward(Matrix::new_column(input));
             res += diff.reduce(|acc, x| acc + x * x, 0.0);
         }
-        res / dataset.0.len() as f64
+        res / dataset.data().len() as f64
     }
     pub fn train(&mut self, dataset: &Dataset, epochs: usize) {
         for _ in 0..epochs {
-            for (input, target) in dataset.0.clone() {
+            for (input, target) in dataset.data().to_vec() {
                 self.sgd(Matrix::new_column(input), Matrix::new_column(target));
             }
         }
