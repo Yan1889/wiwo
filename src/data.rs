@@ -104,7 +104,7 @@ impl Dataset {
             },
             0.0..2.0 * TAU,
             0.00,
-            300,
+            100,
         )
     }
 
@@ -133,8 +133,9 @@ impl Dataset {
     }
     /// 2D -> binary label
     pub fn get_xor() -> Self {
+        let samples = 300;
         Self::new(
-            (0..100)
+            (0..samples)
                 .map(|i| {
                     // 0..25 => (0, 0)
                     // 25..50 => (1, 0)
@@ -142,14 +143,16 @@ impl Dataset {
                     // 75..100 => (1, 1)
                     (
                         vec![
-                            rand::random_range(if i < 25 || (50..75).contains(&i) {
-                                0.1..0.4
-                            } else {
-                                0.6..0.9
-                            }),
-                            rand::random_range(if i < 50 { 0.1..0.4 } else { 0.6..0.9 }),
+                            rand::random_range(
+                                if i < samples / 4 || (samples / 2..samples * 3 / 4).contains(&i) {
+                                    0.0..0.5
+                                } else {
+                                    0.5..1.0
+                                },
+                            ),
+                            rand::random_range(if i < samples / 2 { 0.0..0.5 } else { 0.5..1.0 }),
                         ],
-                        vec![((25..75).contains(&i)) as u8 as f64],
+                        vec![((samples / 4..samples * 3 / 4).contains(&i)) as u8 as f64],
                     )
                 })
                 .collect(),
