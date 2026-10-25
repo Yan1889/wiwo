@@ -21,7 +21,7 @@ async fn main() {
 }
 
 fn iris() {
-    let (train, test) = Dataset::get_iris().split();
+    let (mut train, test) = Dataset::get_iris().split();
 
     let mut net = NeuralNetBuilder::new(vec![4, 10, 10, 3])
         .set_activation_functions(vec![
@@ -33,7 +33,7 @@ fn iris() {
         .build();
 
     dbg!(net.mse(&test));
-    net.train(&train, 50);
+    net.train(&mut train, 50);
     dbg!(net.mse(&test));
 }
 
@@ -44,16 +44,16 @@ async fn class_plane() {
             ActivationFunction::Tanh,
             ActivationFunction::Sigmoid,
         ])
-        .set_learning_rate(0.05)
+        .set_learning_rate(0.01)
+        .set_batch_size(1)
         .build();
 
-    let dataset = Dataset::get_xor();
+    let mut dataset = Dataset::get_spiral();
 
     loop {
-        net.train(&dataset, 10);
+        net.train(&mut dataset, 10);
 
         clear_background(BLACK);
-
         let resolution = 100;
         for i in 0..=resolution {
             for j in 0..=resolution {

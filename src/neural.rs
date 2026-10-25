@@ -52,6 +52,7 @@ pub struct NeuralNetBuilder {
     afs: Vec<ActivationFunction>,
     learning_rate: f64,
     layer_sizes: Vec<usize>,
+    batch_size: usize,
 }
 impl NeuralNetBuilder {
     pub fn new(layer_sizes: Vec<usize>) -> Self {
@@ -59,6 +60,7 @@ impl NeuralNetBuilder {
             afs: vec![ActivationFunction::Sigmoid; layer_sizes.len() - 1],
             learning_rate: 0.01,
             layer_sizes,
+            batch_size: 1,
         }
     }
     pub fn set_activation_functions(mut self, afs: Vec<ActivationFunction>) -> Self {
@@ -69,8 +71,17 @@ impl NeuralNetBuilder {
         self.learning_rate = r;
         self
     }
+    pub fn set_batch_size(mut self, n: usize) -> Self {
+        self.batch_size = n;
+        self
+    }
     pub fn build(self) -> NeuralNet {
-        NeuralNet::new(self.layer_sizes, self.afs, self.learning_rate)
+        NeuralNet::new(
+            self.layer_sizes,
+            self.afs,
+            self.learning_rate,
+            self.batch_size,
+        )
     }
 }
 
@@ -83,10 +94,16 @@ pub struct NeuralNet {
 
     // hyper-parameters
     learning_rate: f64,
+    batch_size: usize,
 }
 
 impl NeuralNet {
-    pub fn new(layer_sizes: Vec<usize>, afs: Vec<ActivationFunction>, learning_rate: f64) -> Self {
+    pub fn new(
+        layer_sizes: Vec<usize>,
+        afs: Vec<ActivationFunction>,
+        learning_rate: f64,
+        batch_size: usize,
+    ) -> Self {
         assert_eq!(afs.len(), layer_sizes.len() - 1);
         assert!(0.0 < learning_rate && learning_rate <= 1.0);
 
@@ -103,6 +120,7 @@ impl NeuralNet {
             afs,
             layer_sizes,
             learning_rate,
+            batch_size,
         }
     }
 
@@ -122,40 +140,75 @@ impl NeuralNet {
         }
         res / dataset.data().len() as f64
     }
-    pub fn train(&mut self, dataset: &Dataset, epochs: usize) {
+    pub fn train(&mut self, dataset: &mut Dataset, epochs: usize) {
         for _ in 0..epochs {
-            for (input, target) in dataset.data().to_vec() {
-                self.sgd(Matrix::new_column(input), Matrix::new_column(target));
+            dataset.shuffle();
+
+            let mut counter = 0;
+            let mut weight_gradient = self
+                .layer_sizes
+                .array_windows()
+                .map(|&[m, n]| Matrix::new_zero(m, n))
+                .collect::<Vec<Matrix>>();
+            let mut bias_gradient = self
+                .layer_sizes
+                .iter()
+                .skip(1)
+                .map(|&n| Matrix::new_column(vec![0.0; n]))
+                .collect::<Vec<Matrix>>();
+
+            let points = dataset.data().len();
+
+            for i in 0..points {
+                let (input, target) = dataset.data()[i].clone();
+                let input = Matrix::new_column(input);
+                let target = Matrix::new_column(target);
+
+                assert_eq!(input.dimensions(), (self.layer_sizes[0], 1));
+                assert_eq!(target.dimensions(), (*self.layer_sizes.last().unwrap(), 1));
+
+                // in the beginning we have an 'a'
+                // layer = (w, z, a)
+                let mut a = vec![input.clone()];
+                let mut z = vec![];
+                for l in 0..self.depth() {
+                    z.push(&(&self.weights[l].transposed() * a.last().unwrap()) + &self.biases[l]);
+                    a.push(self.afs[l].map(z.last().unwrap()));
+                }
+
+                // ŷ - y
+                let mut deltas = &(a.last().unwrap() - &target) * 2.0;
+
+                for l in (0..self.depth()).rev() {
+                    // delta is the loss w.r.t. the last activations
+                    // make delta the loss w.r.t. the weighted sum z by multiplying with f'(z)
+                    deltas = deltas.element_mul(&self.afs[l].map_derivative(&z[l]));
+                    // update bias, bias directly affects z
+                    bias_gradient[l] += &deltas;
+                    // self.biases[l] -= &(&deltas * self.learning_rate);
+                    // update weights
+                    weight_gradient[l] += &(&a[l] * &deltas.transposed());
+                    // self.weights[l] -= &(&(&a[l] * &deltas.transposed()) * self.learning_rate);
+                    // update deltas
+                    deltas = &self.weights[l] * &deltas;
+                }
+
+                counter += 1;
+                if counter == self.batch_size || i == points - 1 {
+                    for l in 0..self.depth() {
+                        // update parameters
+                        let f = self.learning_rate * 1.0 / counter as f64;
+                        self.weights[l] -= &(&weight_gradient[l] * f);
+                        self.biases[l] -= &(&bias_gradient[l] * f);
+
+                        // reset gradients back to 0
+                        weight_gradient[l] =
+                            Matrix::new_zero(self.layer_sizes[l], self.layer_sizes[l + 1]);
+                        bias_gradient[l] = Matrix::new_column(vec![0.0; self.layer_sizes[l + 1]]);
+                    }
+                    counter = 0;
+                }
             }
-        }
-    }
-
-    fn sgd(&mut self, input: Matrix, target: Matrix) {
-        assert_eq!(input.dimensions(), (self.layer_sizes[0], 1));
-        assert_eq!(target.dimensions(), (*self.layer_sizes.last().unwrap(), 1));
-
-        // in the beginning we have an 'a'
-        // layer = (w, z, a)
-        let mut a = vec![input.clone()];
-        let mut z = vec![];
-        for l in 0..self.depth() {
-            z.push(&(&self.weights[l].transposed() * a.last().unwrap()) + &self.biases[l]);
-            a.push(self.afs[l].map(z.last().unwrap()));
-        }
-
-        // ŷ - y
-        let mut deltas = &(a.last().unwrap() - &target) * 2.0;
-
-        for l in (0..self.depth()).rev() {
-            // delta is the loss w.r.t. the last activations
-            // make delta the loss w.r.t. the weighted sum z by multiplying with f'(z)
-            deltas = deltas.element_mul(&self.afs[l].map_derivative(&z[l]));
-            // update bias, bias directly affects z
-            self.biases[l] -= &(&deltas * self.learning_rate);
-            // update weights
-            self.weights[l] -= &(&(&a[l] * &deltas.transposed()) * self.learning_rate);
-            // update deltas
-            deltas = &self.weights[l] * &deltas;
         }
     }
 

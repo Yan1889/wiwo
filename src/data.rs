@@ -5,11 +5,11 @@ use rand::seq::SliceRandom;
 pub struct Dataset(Vec<(Vec<f64>, Vec<f64>)>);
 impl Dataset {
     pub fn new(mut data: Vec<(Vec<f64>, Vec<f64>)>) -> Self {
-        data.shuffle(&mut rand::rng());
         for [(i1, o1), (i2, o2)] in data.array_windows() {
             assert_eq!(i1.len(), i2.len());
             assert_eq!(o1.len(), o2.len());
         }
+        data.shuffle(&mut rand::rng());
         Self(data)
     }
 
@@ -164,6 +164,10 @@ impl Dataset {
         let mut a = self.0;
         let b = a.split_off(a.len() * 4 / 5);
         (Self::new(a), Self::new(b))
+    }
+
+    pub fn shuffle(&mut self) {
+        self.0.shuffle(&mut rand::rng());
     }
 
     /// access to internal data via immutable slice

@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use rand::RngExt;
 
@@ -84,6 +84,11 @@ impl Add<&Matrix> for &Matrix {
             }
         }
         Matrix(res)
+    }
+}
+impl AddAssign<&Matrix> for Matrix {
+    fn add_assign(&mut self, other: &Matrix) {
+        *self = &*self + other;
     }
 }
 impl Sub<&Matrix> for &Matrix {
