@@ -1,19 +1,19 @@
 use macroquad::{
-    color::{BLACK, BLUE, Color, RED, WHITE},
-    shapes::{draw_circle, draw_rectangle},
-    time::draw_fps,
-    window::{clear_background, next_frame, screen_height, screen_width},
+    color::{GREEN, WHITE},
+    prelude,
+    window::{clear_background, next_frame},
 };
 
 use crate::{
     data::Dataset,
-    linalg::Matrix,
     neural::{ActivationFunction, NeuralNetBuilder},
+    visual::{WindowPos, draw_colored_plane, draw_loss},
 };
 
 mod data;
 mod linalg;
 mod neural;
+mod visual;
 
 #[macroquad::main("Machine Learning")]
 async fn main() {
@@ -48,62 +48,16 @@ async fn class_plane() {
         .set_batch_size(1)
         .build();
 
-    let mut dataset = Dataset::get_spiral();
-
-    let discrete = true;
-
+    let mut dataset = Dataset::get_circular();
+    let mut losses = vec![net.mse(&dataset)];
+    let [win1, win2] = WindowPos::split_v();
     loop {
         net.train(&mut dataset, 10);
+        losses.push(net.mse(&dataset));
 
-        clear_background(BLACK);
-        let resolution = 100;
-        for i in 0..=resolution {
-            for j in 0..=resolution {
-                let x = i as f32 / resolution as f32;
-                let y = j as f32 / resolution as f32;
-                let w = 1.0 / resolution as f32;
-                let h = 1.0 / resolution as f32;
-                let r = net.forward(Matrix::new_column(vec![x as f64, y as f64])).0[0][0];
-                draw_rectangle(
-                    x * screen_width(),
-                    (1.0 - y) * screen_height(),
-                    w * screen_width(),
-                    h * screen_height(),
-                    if discrete {
-                        if r < 0.5 {
-                            RED.with_alpha(0.5)
-                        } else {
-                            BLUE.with_alpha(0.5)
-                        }
-                    } else {
-                        // RED -> White -> Blue
-                        // 1, 0, 0 -> 1, 1, 1 -> 0, 0, 1
-                        if r < 0.5 {
-                            Color::new(1.0, 2.0 * r as f32, 2.0 * r as f32, 0.5)
-                        } else {
-                            Color::new(
-                                1.0 - 2.0 * (r - 0.5) as f32,
-                                1.0 - 2.0 * (r - 0.5) as f32,
-                                1.0,
-                                0.5,
-                            )
-                        }
-                    },
-                );
-            }
-        }
-        for (input, output) in dataset.data() {
-            let x = input[0];
-            let y = input[1];
-            let l = output[0];
-            draw_circle(
-                x as f32 * screen_width(),
-                (1.0 - y as f32) * screen_height(),
-                0.003 * screen_width(),
-                if l > 0.5 { BLUE } else { RED },
-            );
-        }
-        draw_fps();
-        next_frame().await
+        clear_background(WHITE);
+        draw_loss(&losses, win1);
+        draw_colored_plane(&net, &dataset, false, win2);
+        next_frame().await;
     }
 }
