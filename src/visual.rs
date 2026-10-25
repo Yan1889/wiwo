@@ -3,7 +3,7 @@ use macroquad::{
     color::{BLACK, BLUE, Color, RED, WHITE},
     shapes::{draw_circle, draw_line, draw_rectangle},
     time::draw_fps,
-    window::{next_frame, screen_height, screen_width},
+    window::{screen_height, screen_width},
 };
 
 use crate::{data::Dataset, linalg::Matrix, neural::NeuralNet};
@@ -73,18 +73,18 @@ pub fn draw_loss(history: &[f64], win: WindowPos) {
 pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, discrete: bool, win: WindowPos) {
     win.clear(BLACK);
     let resolution = 100;
-    for i in 0..=resolution {
-        for j in 0..=resolution {
+    for i in 0..resolution {
+        for j in 0..resolution {
             let x = i as f32 / resolution as f32;
-            let y = j as f32 / resolution as f32;
+            let y = (j + 1) as f32 / resolution as f32;
             let w = 1.0 / resolution as f32;
             let h = 1.0 / resolution as f32;
             let r = net.forward(Matrix::new_column(vec![x as f64, y as f64])).0[0][0];
             draw_rectangle(
                 x * screen_width() * win.w + win.dw * screen_width(),
                 (1.0 - y) * screen_height() * win.h + win.dh * screen_height(),
-                w * screen_width() * win.w + win.dw * screen_width(),
-                h * screen_height() * win.h + win.dh * screen_height(),
+                w * screen_width() * win.w,
+                h * screen_height() * win.h,
                 if discrete {
                     if r < 0.5 {
                         RED.with_alpha(0.5)
@@ -114,7 +114,7 @@ pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, discrete: bool, wi
         let l = output[0];
         draw_circle(
             x as f32 * screen_width() * win.w + win.dw * screen_width(),
-            (1.0 - y as f32) * screen_height() * win.h + win.dh * screen_width(),
+            (1.0 - y as f32) * screen_height() * win.h + win.dh * screen_height(),
             0.003 * screen_width(),
             if l > 0.5 { BLUE } else { RED },
         );
