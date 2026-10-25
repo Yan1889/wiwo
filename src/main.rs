@@ -48,17 +48,15 @@ async fn class_plane() {
         .set_batch_size(1)
         .build();
 
-    let mut dataset = Dataset::get_circular();
+    let mut dataset = Dataset::get_cross();
     let mut losses = vec![net.mse(&dataset)];
-    let [win1, win2, win3, win4] = WindowPos::split_quad();
+    let [win1, win2] = WindowPos::split_v();
     loop {
         net.train(&mut dataset, 10);
         losses.push(net.mse(&dataset));
         clear_background(GREEN);
-        draw_loss(&losses, win1);
-        draw_loss(&losses, win4);
-        draw_colored_plane(&net, &dataset, false, win3);
-        draw_colored_plane(&net, &dataset, false, win2);
+        draw_colored_plane(&net, &dataset, false, win1);
+        draw_loss(&losses, win2);
         next_frame().await;
     }
 }

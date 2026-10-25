@@ -159,6 +159,17 @@ impl Dataset {
         )
     }
 
+    pub fn get_cross() -> Self {
+        Self::new_parametric(
+            |t| vec![0.5, t],
+            0.2..0.8,
+            |t| vec![t, 0.5],
+            0.2..0.8,
+            0.01,
+            100,
+        )
+    }
+
     /// returns 80% train, 20% test
     pub fn split(self) -> (Self, Self) {
         let mut a = self.0;

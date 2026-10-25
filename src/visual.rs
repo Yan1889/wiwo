@@ -2,7 +2,6 @@ use itertools::Itertools;
 use macroquad::{
     color::{BLACK, BLUE, Color, RED, WHITE},
     shapes::{draw_circle, draw_line, draw_rectangle},
-    time::draw_fps,
     window::{screen_height, screen_width},
 };
 
@@ -119,5 +118,4 @@ pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, discrete: bool, wi
             if l > 0.5 { BLUE } else { RED },
         );
     }
-    draw_fps();
 }
