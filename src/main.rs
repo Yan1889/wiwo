@@ -50,6 +50,8 @@ async fn class_plane() {
 
     let mut dataset = Dataset::get_spiral();
 
+    let discrete = true;
+
     loop {
         net.train(&mut dataset, 10);
 
@@ -67,17 +69,25 @@ async fn class_plane() {
                     (1.0 - y) * screen_height(),
                     w * screen_width(),
                     h * screen_height(),
-                    // RED -> White -> Blue
-                    // 1, 0, 0 -> 1, 1, 1 -> 0, 0, 1
-                    if r < 0.5 {
-                        Color::new(1.0, 2.0 * r as f32, 2.0 * r as f32, 0.5)
+                    if discrete {
+                        if r < 0.5 {
+                            RED.with_alpha(0.5)
+                        } else {
+                            BLUE.with_alpha(0.5)
+                        }
                     } else {
-                        Color::new(
-                            1.0 - 2.0 * (r - 0.5) as f32,
-                            1.0 - 2.0 * (r - 0.5) as f32,
-                            1.0,
-                            0.5,
-                        )
+                        // RED -> White -> Blue
+                        // 1, 0, 0 -> 1, 1, 1 -> 0, 0, 1
+                        if r < 0.5 {
+                            Color::new(1.0, 2.0 * r as f32, 2.0 * r as f32, 0.5)
+                        } else {
+                            Color::new(
+                                1.0 - 2.0 * (r - 0.5) as f32,
+                                1.0 - 2.0 * (r - 0.5) as f32,
+                                1.0,
+                                0.5,
+                            )
+                        }
                     },
                 );
             }
