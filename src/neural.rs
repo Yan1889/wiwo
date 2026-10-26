@@ -1,5 +1,3 @@
-use std::cmp;
-
 use crate::{data::Dataset, linalg::Matrix};
 
 #[derive(Debug, Clone, Copy)]
@@ -144,7 +142,8 @@ impl NeuralNet {
     }
 
     pub fn accuracy(&self, dataset: &Dataset) -> f64 {
-        self.assert_dataset(dataset);
+        self.assert_matching_dataset(dataset);
+
         let mut counter = 0;
         for (input, label) in dataset.data() {
             let (i, _) = self
@@ -162,7 +161,7 @@ impl NeuralNet {
     }
 
     pub fn cross_entropy(&self, dataset: &Dataset) -> f64 {
-        self.assert_dataset(dataset);
+        self.assert_matching_dataset(dataset);
 
         let mut res = 0.0;
         for (input, label) in dataset.data() {
@@ -173,7 +172,7 @@ impl NeuralNet {
         res / dataset.data().len() as f64
     }
     pub fn train(&mut self, dataset: &mut Dataset, epochs: usize) {
-        self.assert_dataset(dataset);
+        self.assert_matching_dataset(dataset);
 
         for _ in 0..epochs {
             dataset.shuffle();
@@ -258,11 +257,12 @@ impl NeuralNet {
         }
     }
 
-    pub fn assert_dataset(&self, dataset: &Dataset) {
-        assert_eq!(
-            dataset.dimensions(),
-            (self.layer_sizes[0], *self.layer_sizes.last().unwrap())
-        );
+    pub fn assert_matching_dataset(&self, dataset: &Dataset) {
+        assert_eq!(dataset.dimensions(), self.dimensions());
+    }
+
+    pub fn dimensions(&self) -> (usize, usize) {
+        (self.layer_sizes[0], *self.layer_sizes.last().unwrap())
     }
 
     // # of hidden layers

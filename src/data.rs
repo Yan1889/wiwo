@@ -47,6 +47,22 @@ impl Dataset {
         Self::new(data, 2)
     }
 
+    pub fn normalized(mut self) -> Self {
+        let (min, max) = self
+            .data
+            .iter()
+            .flat_map(|(xs, _)| xs.iter())
+            .fold((f64::MAX, f64::MIN), |(min, max), &x| {
+                (min.min(x), max.max(x))
+            });
+        for (input, _) in &mut self.data {
+            for x in input {
+                *x = (*x - min) / (max - min);
+            }
+        }
+        self
+    }
+
     /// 4D -> {0, 1, 2, 3}
     pub fn get_iris() -> Self {
         let csv = std::fs::read_to_string("data/iris.csv").unwrap();
@@ -65,6 +81,14 @@ impl Dataset {
             data.push((input, label));
         }
         Self::new(data, 3)
+    }
+
+    pub fn get_iris_2d() -> Self {
+        let mut full = Self::get_iris();
+        for (input, _) in &mut full.data {
+            *input = vec![input[0], input[1]];
+        }
+        full
     }
 
     /// 2D -> [0; 1]
@@ -172,6 +196,23 @@ impl Dataset {
             0.01,
             100,
         )
+    }
+
+    pub fn get_triple() -> Self {
+        // at (0.2, 0.2) (0.4, 0.8) (0.8, 0.6)
+        let mut data = Vec::new();
+        for (i, &(x, y)) in [(0.2, 0.2), (0.4, 0.8), (0.8, 0.6)].iter().enumerate() {
+            for _ in 0..50 {
+                data.push((
+                    vec![
+                        x + rand::random_range(-0.1..0.1),
+                        y + rand::random_range(-0.1..0.1),
+                    ],
+                    i,
+                ));
+            }
+        }
+        Self::new(data, 3)
     }
 
     /// returns 75% train, 25% test
