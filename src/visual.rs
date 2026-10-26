@@ -2,6 +2,7 @@ use itertools::Itertools;
 use macroquad::{
     color::{BLACK, BLUE, Color, GRAY, GREEN, RED, WHITE},
     shapes::{draw_circle, draw_line, draw_rectangle},
+    text::draw_text,
     window::{screen_height, screen_width},
 };
 
@@ -43,6 +44,12 @@ impl WindowPos {
             Self::new(0.5, 0.5, 0.5, 0.5),
         ]
     }
+    pub fn map_x(self, x: f32) -> f32 {
+        (x * self.w + self.dw) * screen_width()
+    }
+    pub fn map_y(self, y: f32) -> f32 {
+        (y * self.h + self.dh) * screen_height()
+    }
     pub fn clear(self, color: Color) {
         draw_rectangle(
             self.dw * screen_width(),
@@ -56,37 +63,50 @@ impl WindowPos {
 
 pub fn draw_accuracy(train: &[f64], test: &[f64], win: WindowPos) {
     win.clear(WHITE);
-    // draw lines
     for i in 0..10 {
         draw_line(
-            win.dw * screen_width(),
-            i as f32 / 10.0 * screen_height() * win.h + win.dh * screen_height(),
-            win.w * screen_width() + win.dw * screen_width(),
-            i as f32 / 10.0 * screen_height() * win.h + win.dh * screen_height(),
+            win.map_x(0.0),
+            win.map_y(i as f32 / 10.0),
+            win.map_x(1.0),
+            win.map_y(i as f32 / 10.0),
             1.0,
             GRAY,
         );
     }
     for (i, &[a, b]) in train.array_windows().enumerate() {
         draw_line(
-            i as f32 / train.len() as f32 * screen_width() * win.w + win.dw * screen_width(),
-            (1.0 - a as f32) * screen_height() * win.h + win.dh * screen_height(),
-            (i + 1) as f32 / train.len() as f32 * win.w * screen_width() + win.dw * screen_width(),
-            (1.0 - b as f32) * screen_height() * win.h + win.dh * screen_height(),
+            win.map_x(i as f32 / (train.len() - 1) as f32),
+            win.map_y(1.0 - a as f32),
+            win.map_x((i + 1) as f32 / (train.len() - 1) as f32),
+            win.map_y(1.0 - b as f32),
             3.0,
             RED,
         );
     }
     for (i, &[a, b]) in test.array_windows().enumerate() {
         draw_line(
-            i as f32 / test.len() as f32 * screen_width() * win.w + win.dw * screen_width(),
-            (1.0 - a as f32) * screen_height() * win.h + win.dh * screen_height(),
-            (i + 1) as f32 / test.len() as f32 * win.w * screen_width() + win.dw * screen_width(),
-            (1.0 - b as f32) * screen_height() * win.h + win.dh * screen_height(),
+            win.map_x(i as f32 / (test.len() - 1) as f32),
+            win.map_y(1.0 - a as f32),
+            win.map_x((i + 1) as f32 / (test.len() - 1) as f32),
+            win.map_y(1.0 - b as f32),
             3.0,
             GREEN,
         );
     }
+    draw_text(
+        format!("train accuracy: {:.2}%", train.last().unwrap() * 100.0),
+        win.map_x(0.0),
+        win.map_y(0.75),
+        30.0,
+        RED,
+    );
+    draw_text(
+        format!("test accuracy:  {:.2}%", test.last().unwrap() * 100.0),
+        win.map_x(0.0),
+        win.map_y(0.82),
+        30.0,
+        GREEN,
+    );
 }
 
 pub fn draw_loss(history: &[f64], win: WindowPos) {
@@ -100,16 +120,25 @@ pub fn draw_loss(history: &[f64], win: WindowPos) {
         .enumerate()
     {
         draw_line(
-            (i as f32 / (history.len() - 1) as f32) * screen_width() * win.w
-                + win.dw * screen_width(),
-            (1.0 - a as f32) * screen_height() * win.h + win.dh * screen_height(),
-            ((i + 1) as f32 / (history.len() - 1) as f32) * screen_width() * win.w
-                + win.dw * screen_width(),
-            (1.0 - b as f32) * screen_height() * win.h + win.dh * screen_height(),
-            5.0,
+            win.map_x(i as f32 / (history.len() - 1) as f32),
+            win.map_y(1.0 - a as f32),
+            win.map_x((i + 1) as f32 / (history.len() - 1) as f32),
+            win.map_y(1.0 - b as f32),
+            3.0,
             BLACK,
         );
     }
+
+    draw_text(
+        format!(
+            "cross entropy loss:  {:.2}",
+            history.last().unwrap() * 100.0
+        ),
+        win.map_x(0.0),
+        win.map_y(0.15),
+        30.0,
+        GRAY,
+    );
 }
 pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, discrete: bool, win: WindowPos) {
     win.clear(BLACK);
@@ -125,8 +154,8 @@ pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, discrete: bool, wi
                 .data()[1][0];
 
             draw_rectangle(
-                x * screen_width() * win.w + win.dw * screen_width(),
-                (1.0 - y) * screen_height() * win.h + win.dh * screen_height(),
+                win.map_x(x),
+                win.map_y(1.0 - y),
                 w * screen_width() * win.w,
                 h * screen_height() * win.h,
                 if discrete {
@@ -157,8 +186,8 @@ pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, discrete: bool, wi
         let x = input[0];
         let y = input[1];
         draw_circle(
-            x as f32 * screen_width() * win.w + win.dw * screen_width(),
-            (1.0 - y as f32) * screen_height() * win.h + win.dh * screen_height(),
+            win.map_x(x as f32),
+            win.map_y(1.0 - y as f32),
             0.003 * screen_width(),
             if *label == 1 { BLUE } else { RED },
         );
