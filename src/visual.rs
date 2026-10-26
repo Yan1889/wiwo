@@ -28,6 +28,13 @@ impl WindowPos {
     pub fn split_v() -> [Self; 2] {
         [Self::new(0.5, 1.0, 0.0, 0.0), Self::new(0.5, 1.0, 0.5, 0.0)]
     }
+    pub fn split_three() -> [Self; 3] {
+        [
+            Self::new(0.5, 1.0, 0.0, 0.0),
+            Self::new(0.5, 0.5, 0.5, 0.0),
+            Self::new(0.5, 0.5, 0.5, 0.5),
+        ]
+    }
     pub fn split_quad() -> [Self; 4] {
         [
             Self::new(0.5, 0.5, 0.0, 0.0),

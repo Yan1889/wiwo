@@ -174,10 +174,10 @@ impl Dataset {
         )
     }
 
-    /// returns 80% train, 20% test
+    /// returns 75% train, 25% test
     pub fn split(self) -> (Self, Self) {
         let mut a = self.data;
-        let b = a.split_off(a.len() * 4 / 5);
+        let b = a.split_off(a.len() * 3 / 4);
         (Self::new(a, self.classes), Self::new(b, self.classes))
     }
 
