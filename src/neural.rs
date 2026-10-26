@@ -1,3 +1,5 @@
+use std::cmp;
+
 use crate::{data::Dataset, linalg::Matrix};
 
 #[derive(Debug, Clone, Copy)]
@@ -57,7 +59,7 @@ pub struct NeuralNetBuilder {
 impl NeuralNetBuilder {
     pub fn new(layer_sizes: Vec<usize>) -> Self {
         Self {
-            afs: vec![ActivationFunction::Sigmoid; layer_sizes.len() - 1],
+            afs: vec![ActivationFunction::Tanh; layer_sizes.len() - 2],
             learning_rate: 0.01,
             layer_sizes,
             batch_size: 1,
@@ -104,7 +106,7 @@ impl NeuralNet {
         learning_rate: f64,
         batch_size: usize,
     ) -> Self {
-        assert_eq!(afs.len(), layer_sizes.len() - 1);
+        assert_eq!(afs.len(), layer_sizes.len() - 2);
         assert!(0.0 < learning_rate && learning_rate <= 1.0);
 
         Self {
@@ -126,24 +128,53 @@ impl NeuralNet {
 
     pub fn forward(&self, mut xs: Matrix) -> Matrix {
         assert_eq!(xs.dimensions(), (self.layer_sizes[0], 1));
+
         for l in 0..self.depth() {
-            xs = self.afs[l].map(&(&(&self.weights[l].transposed() * &xs) + &self.biases[l]));
+            xs = &(&self.weights[l].transposed() * &xs) + &self.biases[l];
+            xs = if l == self.depth() - 1 {
+                // softmax in output layer
+                xs = xs.map(|x| x.exp());
+                let sum = xs.reduce(|a, b| a + b, 0.0);
+                xs.map(|x| x / sum)
+            } else {
+                self.afs[l].map(&xs)
+            }
         }
         xs
     }
 
-    pub fn mse(&self, dataset: &Dataset) -> f64 {
-        let mut res = 0.0;
-        for (input, target) in dataset.data().to_vec() {
-            assert_eq!(input.len(), self.layer_sizes[0]);
-            assert_eq!(target.len(), *self.layer_sizes.last().unwrap());
+    pub fn accuracy(&self, dataset: &Dataset) -> f64 {
+        self.assert_dataset(dataset);
+        let mut counter = 0;
+        for (input, label) in dataset.data() {
+            let (i, _) = self
+                .forward(Matrix::new_column(input.clone()))
+                .data()
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a[0].total_cmp(&b[0]))
+                .unwrap();
+            if i == *label {
+                counter += 1;
+            }
+        }
+        counter as f64 / dataset.data().len() as f64
+    }
 
-            let diff = &Matrix::new_column(target) - &self.forward(Matrix::new_column(input));
-            res += diff.reduce(|acc, x| acc + x * x, 0.0);
+    pub fn cross_entropy(&self, dataset: &Dataset) -> f64 {
+        self.assert_dataset(dataset);
+
+        let mut res = 0.0;
+        for (input, label) in dataset.data() {
+            let predicted = self.forward(Matrix::new_column(input.clone()));
+            // -log(p_label)
+            res += -predicted.data()[*label][0].ln();
         }
         res / dataset.data().len() as f64
     }
     pub fn train(&mut self, dataset: &mut Dataset, epochs: usize) {
+        self.assert_dataset(dataset);
+
         for _ in 0..epochs {
             dataset.shuffle();
 
@@ -163,13 +194,9 @@ impl NeuralNet {
             let points = dataset.data().len();
 
             for i in 0..points {
-                let (input, target) = dataset.data()[i].clone();
-
-                assert_eq!(input.len(), self.layer_sizes[0]);
-                assert_eq!(target.len(), *self.layer_sizes.last().unwrap());
+                let (input, label) = dataset.data()[i].clone();
 
                 let input = Matrix::new_column(input);
-                let target = Matrix::new_column(target);
 
                 // in the beginning we have an 'a'
                 // layer = (w, z, a)
@@ -177,16 +204,31 @@ impl NeuralNet {
                 let mut z = vec![];
                 for l in 0..self.depth() {
                     z.push(&(&self.weights[l].transposed() * a.last().unwrap()) + &self.biases[l]);
-                    a.push(self.afs[l].map(z.last().unwrap()));
+                    if l == self.depth() - 1 {
+                        // softmax
+                        let mut ps = z.last().unwrap().clone();
+                        ps = ps.map(|x| x.exp());
+                        let sum = ps.reduce(|a, b| a + b, 0.0);
+                        a.push(ps.map(|x| x / sum));
+                    } else {
+                        a.push(self.afs[l].map(z.last().unwrap()));
+                    }
                 }
 
-                // ŷ - y
-                let mut deltas = &(a.last().unwrap() - &target) * 2.0;
+                // dL/dz = ŷ - y
+                let mut deltas = Matrix::new_column(vec![0.0; dataset.dimensions().1]);
+                for i in 0..dataset.dimensions().1 {
+                    deltas.data_mut()[i][0] =
+                        a.last().unwrap().data()[i][0] - (i == label) as u8 as f64
+                }
+                // let mut deltas = &(a.last().unwrap() - &target) * 2.0;
 
                 for l in (0..self.depth()).rev() {
                     // delta is the loss w.r.t. the last activations
                     // make delta the loss w.r.t. the weighted sum z by multiplying with f'(z)
-                    deltas = deltas.element_mul(&self.afs[l].map_derivative(&z[l]));
+                    if l < self.depth() - 1 {
+                        deltas = deltas.element_mul(&self.afs[l].map_derivative(&z[l]));
+                    }
                     // update bias, bias directly affects z
                     bias_gradient[l] += &deltas;
                     // self.biases[l] -= &(&deltas * self.learning_rate);
@@ -216,6 +258,14 @@ impl NeuralNet {
         }
     }
 
+    pub fn assert_dataset(&self, dataset: &Dataset) {
+        assert_eq!(
+            dataset.dimensions(),
+            (self.layer_sizes[0], *self.layer_sizes.last().unwrap())
+        );
+    }
+
+    // # of hidden layers
     pub fn depth(&self) -> usize {
         self.layer_sizes.len() - 1
     }

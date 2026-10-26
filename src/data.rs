@@ -2,15 +2,19 @@ use std::{f64::consts::TAU, ops::Range};
 
 use rand::seq::SliceRandom;
 
-pub struct Dataset(Vec<(Vec<f64>, Vec<f64>)>);
+pub struct Dataset {
+    data: Vec<(Vec<f64>, usize)>,
+    classes: usize,
+}
+
 impl Dataset {
-    pub fn new(mut data: Vec<(Vec<f64>, Vec<f64>)>) -> Self {
-        for [(i1, o1), (i2, o2)] in data.array_windows() {
+    pub fn new(mut data: Vec<(Vec<f64>, usize)>, classes: usize) -> Self {
+        for [(i1, l1), (i2, l2)] in data.array_windows() {
             assert_eq!(i1.len(), i2.len());
-            assert_eq!(o1.len(), o2.len());
+            assert!(*l1 < classes && *l2 < classes);
         }
         data.shuffle(&mut rand::rng());
-        Self(data)
+        Self { data, classes }
     }
 
     pub fn new_parametric(
@@ -28,7 +32,7 @@ impl Dataset {
             for x in &mut point {
                 *x += rand::random_range(-noise..=noise);
             }
-            data.push((point, vec![0.0]));
+            data.push((point, 0));
             t += (r1.end - r1.start) / samples as f64;
         }
         t = r2.start;
@@ -37,31 +41,30 @@ impl Dataset {
             for x in &mut point {
                 *x += rand::random_range(-noise..=noise);
             }
-            data.push((point, vec![1.0]));
+            data.push((point, 1));
             t += (r2.end - r2.start) / samples as f64;
         }
-        Self::new(data)
+        Self::new(data, 2)
     }
 
     /// 4D -> {0, 1, 2, 3}
     pub fn get_iris() -> Self {
         let csv = std::fs::read_to_string("data/iris.csv").unwrap();
-        let mut data = Vec::<(Vec<f64>, Vec<f64>)>::new();
+        let mut data = Vec::<(Vec<f64>, usize)>::new();
         for l in csv.lines().skip(1) {
             let row = l.split(',').skip(1).collect::<Vec<&str>>();
             let input = (0..4)
                 .map(|i| row[i].parse::<f64>().unwrap())
                 .collect::<Vec<f64>>();
-            let mut label = vec![0.0; 3];
-            label[match row[4] {
+            let label = match row[4] {
                 "Iris-setosa" => 0,
                 "Iris-versicolor" => 1,
                 "Iris-virginica" => 2,
                 _ => unreachable!(),
-            }] = 1.0;
+            };
             data.push((input, label));
         }
-        Self::new(data)
+        Self::new(data, 3)
     }
 
     /// 2D -> [0; 1]
@@ -152,10 +155,11 @@ impl Dataset {
                             ),
                             rand::random_range(if i < samples / 2 { 0.0..0.5 } else { 0.5..1.0 }),
                         ],
-                        vec![((samples / 4..samples * 3 / 4).contains(&i)) as u8 as f64],
+                        ((samples / 4..samples * 3 / 4).contains(&i)) as usize,
                     )
                 })
                 .collect(),
+            2,
         )
     }
 
@@ -172,17 +176,21 @@ impl Dataset {
 
     /// returns 80% train, 20% test
     pub fn split(self) -> (Self, Self) {
-        let mut a = self.0;
+        let mut a = self.data;
         let b = a.split_off(a.len() * 4 / 5);
-        (Self::new(a), Self::new(b))
+        (Self::new(a, self.classes), Self::new(b, self.classes))
     }
 
     pub fn shuffle(&mut self) {
-        self.0.shuffle(&mut rand::rng());
+        self.data.shuffle(&mut rand::rng());
     }
 
     /// access to internal data via immutable slice
-    pub fn data(&self) -> &[(Vec<f64>, Vec<f64>)] {
-        &self.0
+    pub fn data(&self) -> &[(Vec<f64>, usize)] {
+        &self.data
+    }
+
+    pub fn dimensions(&self) -> (usize, usize) {
+        (self.data[0].0.len(), self.classes)
     }
 }

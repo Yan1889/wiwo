@@ -3,7 +3,7 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 use rand::RngExt;
 
 #[derive(Clone, Debug)]
-pub struct Matrix(pub Vec<Vec<f64>>);
+pub struct Matrix(Vec<Vec<f64>>);
 
 impl Matrix {
     pub fn new(data: Vec<Vec<f64>>) -> Self {
@@ -69,6 +69,12 @@ impl Matrix {
             }
         }
         acc
+    }
+    pub fn data(&self) -> &[Vec<f64>] {
+        &self.0
+    }
+    pub fn data_mut(&mut self) -> &mut [Vec<f64>] {
+        &mut self.0
     }
 }
 

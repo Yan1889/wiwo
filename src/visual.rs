@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use macroquad::{
-    color::{BLACK, BLUE, Color, RED, WHITE},
+    color::{BLACK, BLUE, Color, GRAY, GREEN, RED, WHITE},
     shapes::{draw_circle, draw_line, draw_rectangle},
     window::{screen_height, screen_width},
 };
@@ -47,6 +47,41 @@ impl WindowPos {
     }
 }
 
+pub fn draw_accuracy(train: &[f64], test: &[f64], win: WindowPos) {
+    win.clear(WHITE);
+    // draw lines
+    for i in 0..10 {
+        draw_line(
+            win.dw * screen_width(),
+            i as f32 / 10.0 * screen_height() * win.h + win.dh * screen_height(),
+            win.w * screen_width() + win.dw * screen_width(),
+            i as f32 / 10.0 * screen_height() * win.h + win.dh * screen_height(),
+            1.0,
+            GRAY,
+        );
+    }
+    for (i, &[a, b]) in train.array_windows().enumerate() {
+        draw_line(
+            i as f32 / train.len() as f32 * screen_width() * win.w + win.dw * screen_width(),
+            (1.0 - a as f32) * screen_height() * win.h + win.dh * screen_height(),
+            (i + 1) as f32 / train.len() as f32 * win.w * screen_width() + win.dw * screen_width(),
+            (1.0 - b as f32) * screen_height() * win.h + win.dh * screen_height(),
+            3.0,
+            RED,
+        );
+    }
+    for (i, &[a, b]) in test.array_windows().enumerate() {
+        draw_line(
+            i as f32 / test.len() as f32 * screen_width() * win.w + win.dw * screen_width(),
+            (1.0 - a as f32) * screen_height() * win.h + win.dh * screen_height(),
+            (i + 1) as f32 / test.len() as f32 * win.w * screen_width() + win.dw * screen_width(),
+            (1.0 - b as f32) * screen_height() * win.h + win.dh * screen_height(),
+            3.0,
+            GREEN,
+        );
+    }
+}
+
 pub fn draw_loss(history: &[f64], win: WindowPos) {
     win.clear(WHITE);
     let min = history.iter().fold(f64::MAX, |acc, &x| acc.min(x));
@@ -78,7 +113,10 @@ pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, discrete: bool, wi
             let y = (j + 1) as f32 / resolution as f32;
             let w = 1.0 / resolution as f32;
             let h = 1.0 / resolution as f32;
-            let r = net.forward(Matrix::new_column(vec![x as f64, y as f64])).0[0][0];
+            let r = net
+                .forward(Matrix::new_column(vec![x as f64, y as f64]))
+                .data()[1][0];
+
             draw_rectangle(
                 x * screen_width() * win.w + win.dw * screen_width(),
                 (1.0 - y) * screen_height() * win.h + win.dh * screen_height(),
@@ -93,6 +131,7 @@ pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, discrete: bool, wi
                 } else {
                     // RED -> White -> Blue
                     // 1, 0, 0 -> 1, 1, 1 -> 0, 0, 1
+                    // Color::new(1.0 - r as f32, 0.0, r as f32, 0.5)
                     if r < 0.5 {
                         Color::new(1.0, 2.0 * r as f32, 2.0 * r as f32, 0.5)
                     } else {
@@ -107,15 +146,14 @@ pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, discrete: bool, wi
             );
         }
     }
-    for (input, output) in dataset.data() {
+    for (input, label) in dataset.data() {
         let x = input[0];
         let y = input[1];
-        let l = output[0];
         draw_circle(
             x as f32 * screen_width() * win.w + win.dw * screen_width(),
             (1.0 - y as f32) * screen_height() * win.h + win.dh * screen_height(),
             0.003 * screen_width(),
-            if l > 0.5 { BLUE } else { RED },
+            if *label == 1 { BLUE } else { RED },
         );
     }
 }

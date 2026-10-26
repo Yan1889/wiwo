@@ -1,3 +1,10 @@
 {
-    "cSpell.words": ["linalg", "macroquad", "relu", "setosa", "virginica"]
+    "cSpell.words": [
+        "linalg",
+        "macroquad",
+        "relu",
+        "setosa",
+        "softmax",
+        "virginica"
+    ]
 }
