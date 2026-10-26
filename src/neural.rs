@@ -135,6 +135,9 @@ impl NeuralNet {
     pub fn mse(&self, dataset: &Dataset) -> f64 {
         let mut res = 0.0;
         for (input, target) in dataset.data().to_vec() {
+            assert_eq!(input.len(), self.layer_sizes[0]);
+            assert_eq!(target.len(), *self.layer_sizes.last().unwrap());
+
             let diff = &Matrix::new_column(target) - &self.forward(Matrix::new_column(input));
             res += diff.reduce(|acc, x| acc + x * x, 0.0);
         }
@@ -161,11 +164,12 @@ impl NeuralNet {
 
             for i in 0..points {
                 let (input, target) = dataset.data()[i].clone();
+
+                assert_eq!(input.len(), self.layer_sizes[0]);
+                assert_eq!(target.len(), *self.layer_sizes.last().unwrap());
+
                 let input = Matrix::new_column(input);
                 let target = Matrix::new_column(target);
-
-                assert_eq!(input.dimensions(), (self.layer_sizes[0], 1));
-                assert_eq!(target.dimensions(), (*self.layer_sizes.last().unwrap(), 1));
 
                 // in the beginning we have an 'a'
                 // layer = (w, z, a)
