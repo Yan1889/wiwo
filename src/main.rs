@@ -16,8 +16,12 @@ mod visual;
 
 #[macroquad::main("Machine Learning")]
 async fn main() {
-    let mut net = NeuralNetBuilder::new(vec![784, 64, 16, 10])
-        .set_activation_functions(vec![ActivationFunction::ReLU, ActivationFunction::ReLU])
+    let mut net = NeuralNetBuilder::new(vec![784, 256, 128, 64, 10])
+        .set_activation_functions(vec![
+            ActivationFunction::Tanh,
+            ActivationFunction::Tanh,
+            ActivationFunction::Tanh,
+        ])
         .set_learning_rate(0.01)
         .set_batch_size(1)
         .build();
