@@ -94,7 +94,13 @@ impl Add<&Matrix> for &Matrix {
 }
 impl AddAssign<&Matrix> for Matrix {
     fn add_assign(&mut self, other: &Matrix) {
-        *self = &*self + other;
+        assert_eq!(self.dimensions(), other.dimensions());
+        let (m, n) = self.dimensions();
+        for i in 0..m {
+            for j in 0..n {
+                self.data_mut()[i][j] += other.data()[i][j];
+            }
+        }
     }
 }
 impl Sub<&Matrix> for &Matrix {

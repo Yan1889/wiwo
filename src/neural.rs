@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::{data::Dataset, linalg::Matrix};
 
 #[derive(Debug, Clone, Copy)]
@@ -128,7 +130,8 @@ impl NeuralNet {
         assert_eq!(xs.dimensions(), (self.layer_sizes[0], 1));
 
         for l in 0..self.depth() {
-            xs = &(&self.weights[l].transposed() * &xs) + &self.biases[l];
+            xs = &self.weights[l].transposed() * &xs;
+            xs += &self.biases[l];
             xs = if l == self.depth() - 1 {
                 // softmax in output layer
                 xs = xs.map(|x| x.exp());
@@ -175,6 +178,8 @@ impl NeuralNet {
         self.assert_matching_dataset(dataset);
 
         for _ in 0..epochs {
+            let start = Instant::now();
+
             dataset.shuffle();
 
             let mut counter = 0;
@@ -202,11 +207,12 @@ impl NeuralNet {
                 let mut a = vec![input.clone()];
                 let mut z = vec![];
                 for l in 0..self.depth() {
-                    z.push(&(&self.weights[l].transposed() * a.last().unwrap()) + &self.biases[l]);
+                    let mut z_curr = &self.weights[l].transposed() * a.last().unwrap();
+                    z_curr += &self.biases[l];
+                    z.push(z_curr);
                     if l == self.depth() - 1 {
                         // softmax
-                        let mut ps = z.last().unwrap().clone();
-                        ps = ps.map(|x| x.exp());
+                        let ps = z.last().unwrap().map(|x| x.exp());
                         let sum = ps.reduce(|a, b| a + b, 0.0);
                         a.push(ps.map(|x| x / sum));
                     } else {
@@ -220,7 +226,6 @@ impl NeuralNet {
                     deltas.data_mut()[i][0] =
                         a.last().unwrap().data()[i][0] - (i == label) as u8 as f64
                 }
-                // let mut deltas = &(a.last().unwrap() - &target) * 2.0;
 
                 for l in (0..self.depth()).rev() {
                     // delta is the loss w.r.t. the last activations
@@ -228,13 +233,8 @@ impl NeuralNet {
                     if l < self.depth() - 1 {
                         deltas = deltas.element_mul(&self.afs[l].map_derivative(&z[l]));
                     }
-                    // update bias, bias directly affects z
                     bias_gradient[l] += &deltas;
-                    // self.biases[l] -= &(&deltas * self.learning_rate);
-                    // update weights
                     weight_gradient[l] += &(&a[l] * &deltas.transposed());
-                    // self.weights[l] -= &(&(&a[l] * &deltas.transposed()) * self.learning_rate);
-                    // update deltas
                     deltas = &self.weights[l] * &deltas;
                 }
 
@@ -254,6 +254,7 @@ impl NeuralNet {
                     counter = 0;
                 }
             }
+            println!("one epoch took {:?}", start.elapsed());
         }
     }
 
