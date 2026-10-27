@@ -149,7 +149,9 @@ impl NeuralNet {
 
         let mut counter = 0;
         for (input, label) in dataset.data() {
-            let (i, _) = self.forward(Matrix::new_row(input.clone())).data()[0]
+            let (i, _) = self
+                .forward(Matrix::new_row(input.clone()))
+                .data
                 .iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.total_cmp(b))
@@ -170,7 +172,7 @@ impl NeuralNet {
         for (input, label) in dataset.data() {
             let predicted = self.forward(Matrix::new_row(input.clone()));
             // -log(p_label)
-            res += -predicted.data()[0][*label].ln();
+            res += -predicted.data[*label].ln();
         }
 
         println!("loss took {:?}", start.elapsed());
@@ -221,11 +223,9 @@ impl NeuralNet {
                 }
 
                 // dL/dz = ŷ - y
-                let mut deltas = Matrix::new_row(vec![0.0; dataset.dimensions().1]);
-                for i in 0..dataset.dimensions().1 {
-                    deltas.data_mut()[0][i] =
-                        a.last().unwrap().data()[0][i] - (i == label) as u8 as f64
-                }
+                let mut target = Matrix::new_row(vec![0.0; dataset.dimensions().1]);
+                target.data[label] = 1.0;
+                let mut deltas = a.last().unwrap() - &target;
 
                 for l in (0..self.depth()).rev() {
                     // delta is the loss w.r.t. the last activations

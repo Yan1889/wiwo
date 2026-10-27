@@ -182,7 +182,7 @@ pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, border: Border, wi
             let h = 1.0 / resolution as f32;
             let o = net.forward(Matrix::new_row(vec![x as f64, y as f64]));
             let color = if net.dimensions().1 == 3 {
-                let [r, b, g] = [0, 1, 2].map(|i| o.data()[0][i] as f32);
+                let [r, b, g] = [0, 1, 2].map(|i| o.data[i] as f32);
                 match border {
                     Border::Lerp => Color::new(r, g, b, 0.5),
                     Border::White | Border::Black => panic!(),
@@ -194,7 +194,7 @@ pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, border: Border, wi
                     .with_alpha(0.5),
                 }
             } else {
-                let [r, b] = [0, 1].map(|i| o.data()[0][i] as f32);
+                let [r, b] = [0, 1].map(|i| o.data[i] as f32);
                 match border {
                     Border::Lerp => Color::new(r, 0.0, b, 0.5),
                     Border::Discrete => if r > 0.5 { RED } else { BLUE }.with_alpha(0.5),

@@ -3,78 +3,86 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 use rand::RngExt;
 
 #[derive(Clone, Debug)]
-pub struct Matrix(Vec<Vec<f64>>);
+pub struct Matrix {
+    pub rows: usize,
+    pub cols: usize,
+    pub data: Vec<f64>,
+}
 
 impl Matrix {
-    pub fn new(data: Vec<Vec<f64>>) -> Self {
-        for [a, b] in data.array_windows() {
-            assert_eq!(a.len(), b.len());
-        }
-        Self(data)
+    pub fn new(data: Vec<f64>, rows: usize, cols: usize) -> Self {
+        Self { rows, cols, data }
     }
-    pub fn new_zero(m: usize, n: usize) -> Self {
-        Self(vec![vec![0.0; n]; m])
-    }
-    pub fn new_random(m: usize, n: usize) -> Self {
-        let mut res = vec![vec![0.0; n]; m];
-        for i in 0..m {
-            for j in 0..n {
-                res[i][j] = rand::rng().random_range(-1.0..1.0);
-            }
+    pub fn new_zero(rows: usize, cols: usize) -> Self {
+        Self {
+            rows,
+            cols,
+            data: vec![0.0; rows * cols],
         }
-        Self(res)
+    }
+    pub fn new_random(rows: usize, cols: usize) -> Self {
+        let mut data = vec![0.0; rows * cols];
+        for i in 0..rows * cols {
+            data[i] = rand::rng().random_range(-1.0..1.0);
+        }
+        Self { rows, cols, data }
     }
     pub fn new_row(xs: Vec<f64>) -> Self {
-        Self(vec![xs])
-    }
-    pub fn dimensions(&self) -> (usize, usize) {
-        (self.0.len(), self.0[0].len())
+        Self {
+            rows: 1,
+            cols: xs.len(),
+            data: xs,
+        }
     }
     pub fn map(&self, f: impl Fn(f64) -> f64) -> Self {
-        let (m, n) = self.dimensions();
-        let mut res = vec![vec![0.0; n]; m];
-        for i in 0..m {
-            for j in 0..n {
-                res[i][j] = f(self.0[i][j]);
-            }
+        let mut data = vec![0.0; self.rows * self.cols];
+        for i in 0..self.rows * self.cols {
+            data[i] = f(self.data[i]);
         }
-        Self(res)
+        Self {
+            rows: self.rows,
+            cols: self.cols,
+            data,
+        }
     }
     pub fn transposed(&self) -> Self {
-        let (m, n) = self.dimensions();
-        let mut res = vec![vec![0.0; m]; n];
-        for i in 0..n {
-            for j in 0..m {
-                res[i][j] = self.0[j][i];
+        let mut res = Matrix::new_zero(self.cols, self.rows);
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                res.set(j, i, self.get(i, j));
             }
         }
-        Self(res)
+        res
     }
     pub fn element_mul(&self, other: &Matrix) -> Self {
         assert_eq!(self.dimensions(), other.dimensions());
-        let (m, n) = self.dimensions();
-        let mut res = vec![vec![0.0; n]; m];
-        for i in 0..m {
-            for j in 0..n {
-                res[i][j] = self.0[i][j] * other.0[i][j];
-            }
+        let mut data = vec![0.0; self.rows * self.cols];
+        for i in 0..self.rows * self.cols {
+            data[i] = self.data[i] * other.data[i];
         }
-        Self(res)
+        Self {
+            rows: self.rows,
+            cols: self.cols,
+            data,
+        }
     }
     pub fn reduce<T>(&self, f: impl Fn(T, f64) -> T, mut acc: T) -> T {
-        let (m, n) = self.dimensions();
-        for i in 0..m {
-            for j in 0..n {
-                acc = f(acc, self.0[i][j]);
-            }
+        for i in 0..self.rows * self.cols {
+            acc = f(acc, self.data[i]);
         }
         acc
     }
-    pub fn data(&self) -> &[Vec<f64>] {
-        &self.0
+    pub fn dimensions(&self) -> (usize, usize) {
+        (self.rows, self.cols)
     }
-    pub fn data_mut(&mut self) -> &mut [Vec<f64>] {
-        &mut self.0
+    pub fn set(&mut self, i: usize, j: usize, x: f64) {
+        self.data[i * self.cols + j] = x;
+    }
+    pub fn get(&self, i: usize, j: usize) -> f64 {
+        self.data[i * self.cols + j]
+    }
+    pub fn get_mut(&mut self, i: usize, j: usize) -> &mut f64 {
+        &mut self.data[i * self.cols + j]
     }
 }
 
@@ -82,24 +90,22 @@ impl Add<&Matrix> for &Matrix {
     type Output = Matrix;
     fn add(self, other: &Matrix) -> Self::Output {
         assert_eq!(self.dimensions(), other.dimensions());
-        let (m, n) = self.dimensions();
-        let mut res = vec![vec![0.0; n]; m];
-        for i in 0..m {
-            for j in 0..n {
-                res[i][j] = self.0[i][j] + other.0[i][j];
-            }
+        let mut data = vec![0.0; self.rows * self.cols];
+        for i in 0..self.rows * self.cols {
+            data[i] = self.data[i] + other.data[i];
         }
-        Matrix(res)
+        Matrix {
+            cols: self.cols,
+            rows: self.rows,
+            data,
+        }
     }
 }
 impl AddAssign<&Matrix> for Matrix {
     fn add_assign(&mut self, other: &Matrix) {
         assert_eq!(self.dimensions(), other.dimensions());
-        let (m, n) = self.dimensions();
-        for i in 0..m {
-            for j in 0..n {
-                self.data_mut()[i][j] += other.data()[i][j];
-            }
+        for i in 0..self.rows * self.cols {
+            self.data[i] += other.data[i];
         }
     }
 }
@@ -107,24 +113,22 @@ impl Sub<&Matrix> for &Matrix {
     type Output = Matrix;
     fn sub(self, other: &Matrix) -> Self::Output {
         assert_eq!(self.dimensions(), other.dimensions());
-        let (m, n) = self.dimensions();
-        let mut res = vec![vec![0.0; n]; m];
-        for i in 0..m {
-            for j in 0..n {
-                res[i][j] = self.0[i][j] - other.0[i][j];
-            }
+        let mut data = vec![0.0; self.rows * self.cols];
+        for i in 0..self.rows * self.cols {
+            data[i] = self.data[i] - other.data[i];
         }
-        Matrix(res)
+        Matrix {
+            cols: self.cols,
+            rows: self.rows,
+            data,
+        }
     }
 }
 impl SubAssign<&Matrix> for Matrix {
     fn sub_assign(&mut self, other: &Matrix) {
         assert_eq!(self.dimensions(), other.dimensions());
-        let (m, n) = self.dimensions();
-        for i in 0..m {
-            for j in 0..n {
-                self.data_mut()[i][j] -= other.data()[i][j];
-            }
+        for i in 0..self.rows * self.cols {
+            self.data[i] -= other.data[i];
         }
     }
 }
@@ -132,32 +136,31 @@ impl SubAssign<&Matrix> for Matrix {
 impl Mul<&Matrix> for &Matrix {
     type Output = Matrix;
     fn mul(self, other: &Matrix) -> Self::Output {
-        let (m, self_n) = self.dimensions();
-        let (other_m, n) = other.dimensions();
-        assert_eq!(self_n, other_m);
+        assert_eq!(self.cols, other.rows);
+        let mut res = Matrix::new_zero(self.rows, other.cols);
 
-        let mut res = vec![vec![0.0; n]; m];
-        for i in 0..m {
-            for j in 0..n {
-                for k in 0..self_n {
-                    res[i][j] += self.0[i][k] * other.0[k][j];
+        for i in 0..self.rows {
+            for j in 0..other.cols {
+                for k in 0..self.cols {
+                    *res.get_mut(i, j) += self.get(i, k) * other.get(k, j);
                 }
             }
         }
-        Matrix(res)
+        res
     }
 }
 
 impl Mul<f64> for &Matrix {
     type Output = Matrix;
     fn mul(self, x: f64) -> Self::Output {
-        let (m, n) = self.dimensions();
-        let mut res = vec![vec![0.0; n]; m];
-        for i in 0..m {
-            for j in 0..n {
-                res[i][j] = self.0[i][j] * x;
-            }
+        let mut data = vec![0.0; self.rows * self.cols];
+        for i in 0..self.rows * self.cols {
+            data[i] = self.data[i] * x;
         }
-        Matrix(res)
+        Matrix {
+            rows: self.rows,
+            cols: self.cols,
+            data,
+        }
     }
 }
