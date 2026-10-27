@@ -3,6 +3,7 @@
         "Lerp",
         "linalg",
         "macroquad",
+        "mnist",
         "relu",
         "setosa",
         "softmax",

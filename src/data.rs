@@ -1,4 +1,9 @@
-use std::{f64::consts::TAU, ops::Range};
+use std::{
+    f64::consts::TAU,
+    fs::File,
+    io::{BufReader, Read},
+    ops::Range,
+};
 
 use rand::seq::SliceRandom;
 
@@ -51,13 +56,21 @@ impl Dataset {
         let (min, max) = self
             .data
             .iter()
-            .flat_map(|(xs, _)| xs.iter())
-            .fold((f64::MAX, f64::MIN), |(min, max), &x| {
-                (min.min(x), max.max(x))
-            });
+            .flat_map(|(xs, _)| xs.iter().enumerate())
+            .fold(
+                (
+                    vec![f64::MAX; self.dimensions().0],
+                    vec![f64::MIN; self.dimensions().0],
+                ),
+                |(mut min, mut max), (i, &x)| {
+                    min[i] = min[i].min(x);
+                    max[i] = max[i].max(x);
+                    (min, max)
+                },
+            );
         for (input, _) in &mut self.data {
-            for x in input {
-                *x = (*x - min) / (max - min);
+            for (i, x) in input.iter_mut().enumerate() {
+                *x = (*x - min[i]) / (max[i] - min[i]);
             }
         }
         self
@@ -86,9 +99,48 @@ impl Dataset {
     pub fn get_iris_2d() -> Self {
         let mut full = Self::get_iris();
         for (input, _) in &mut full.data {
-            *input = vec![input[0], input[1]];
+            *input = vec![input[2], input[3]];
         }
         full
+    }
+
+    pub fn get_mnist() -> Self {
+        let mut data = Vec::new();
+
+        let mut br_image = BufReader::new(File::open("data/train-images.idx3-ubyte").unwrap());
+        let mut br_label = BufReader::new(File::open("data/train-labels.idx1-ubyte").unwrap());
+
+        let mut magic = [0; 4];
+        br_image.read_exact(&mut magic).unwrap();
+        assert_eq!(0x00000803, u32::from_be_bytes(magic));
+        br_label.read_exact(&mut magic).unwrap();
+        assert_eq!(0x00000801, u32::from_be_bytes(magic));
+
+        let mut count = [0; 4];
+        br_image.read_exact(&mut count).unwrap();
+        assert_eq!(u32::from_be_bytes(count), 60_000);
+        br_label.read_exact(&mut count).unwrap();
+        assert_eq!(u32::from_be_bytes(count), 60_000);
+
+        let mut rows = [0; 4];
+        br_image.read_exact(&mut rows).unwrap();
+        assert_eq!(u32::from_be_bytes(rows), 28);
+        let mut cols = [0; 4];
+        br_image.read_exact(&mut cols).unwrap();
+        assert_eq!(u32::from_be_bytes(cols), 28);
+
+        // for _ in 0..u32::from_be_bytes(count) {
+        for _ in 0..6000 {
+            let mut buf = vec![0; 784];
+            br_image.read_exact(&mut buf).unwrap();
+            let mut label = [0];
+            br_label.read_exact(&mut label).unwrap();
+            data.push((
+                buf.into_iter().map(|x| x as f64 / 255.0).collect(),
+                label[0] as usize,
+            ));
+        }
+        Self::new(data, 10)
     }
 
     /// 2D -> [0; 1]
