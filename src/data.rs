@@ -1,5 +1,5 @@
 use std::{
-    f64::consts::TAU,
+    f64::consts::{PI, TAU},
     fs::File,
     io::{BufReader, Read},
     ops::Range,
@@ -23,33 +23,24 @@ impl Dataset {
     }
 
     pub fn new_parametric(
-        a: fn(f64) -> Vec<f64>,
-        r1: Range<f64>,
-        b: fn(f64) -> Vec<f64>,
-        r2: Range<f64>,
+        equations: Vec<(fn(f64) -> Vec<f64>, Range<f64>)>,
         noise: f64,
         samples: usize,
     ) -> Self {
+        let n = equations.len();
         let mut data = vec![];
-        let mut t = r1.start;
-        while t <= r1.end {
-            let mut point = a(t);
-            for x in &mut point {
-                *x += rand::random_range(-noise..=noise);
+        for (i, (f, r)) in equations.into_iter().enumerate() {
+            let mut t = r.start;
+            while t < r.end {
+                let mut point = f(t);
+                for x in &mut point {
+                    *x += rand::random_range(-noise..=noise);
+                }
+                data.push((point, i));
+                t += (r.end - r.start) / samples as f64;
             }
-            data.push((point, 0));
-            t += (r1.end - r1.start) / samples as f64;
         }
-        t = r2.start;
-        while t <= r2.end {
-            let mut point = b(t);
-            for x in &mut point {
-                *x += rand::random_range(-noise..=noise);
-            }
-            data.push((point, 1));
-            t += (r2.end - r2.start) / samples as f64;
-        }
-        Self::new(data, 2)
+        Self::new(data, n)
     }
 
     pub fn normalized(mut self) -> Self {
@@ -146,54 +137,80 @@ impl Dataset {
     /// 2D -> [0; 1]
     pub fn get_heart() -> Self {
         Self::new_parametric(
-            |t| {
-                vec![
-                    t.sin().powi(3) / 3.0 + 0.5,
-                    (13.0 * t.cos()
-                        - 5.0 * (2.0 * t).cos()
-                        - 2.0 * (3.0 * t).cos()
-                        - (4.0 * t).cos())
-                        / 48.0
-                        + 0.5,
-                ]
-            },
-            0.0..TAU,
-            |t| {
-                if t < TAU {
-                    vec![
-                        t.sin().powi(3) / 2.0 + 0.5,
-                        (13.0 * t.cos()
-                            - 5.0 * (2.0 * t).cos()
-                            - 2.0 * (3.0 * t).cos()
-                            - (4.0 * t).cos())
-                            / (16.0 * 2.0)
-                            + 0.55,
-                    ]
-                } else {
-                    vec![
-                        t.sin().powi(3) / 6.0 + 0.5,
-                        (13.0 * t.cos()
-                            - 5.0 * (2.0 * t).cos()
-                            - 2.0 * (3.0 * t).cos()
-                            - (4.0 * t).cos())
-                            / (16.0 * 6.0)
-                            + 0.45,
-                    ]
-                }
-            },
-            0.0..2.0 * TAU,
+            vec![
+                (
+                    |t| {
+                        vec![
+                            t.sin().powi(3) / 3.0 + 0.5,
+                            (13.0 * t.cos()
+                                - 5.0 * (2.0 * t).cos()
+                                - 2.0 * (3.0 * t).cos()
+                                - (4.0 * t).cos())
+                                / 48.0
+                                + 0.5,
+                        ]
+                    },
+                    0.0..TAU,
+                ),
+                (
+                    |t| {
+                        vec![
+                            t.sin().powi(3) / 2.0 + 0.5,
+                            (13.0 * t.cos()
+                                - 5.0 * (2.0 * t).cos()
+                                - 2.0 * (3.0 * t).cos()
+                                - (4.0 * t).cos())
+                                / (16.0 * 2.0)
+                                + 0.55,
+                        ]
+                    },
+                    0.0..TAU,
+                ),
+                (
+                    |t| {
+                        vec![
+                            t.sin().powi(3) / 6.0 + 0.5,
+                            (13.0 * t.cos()
+                                - 5.0 * (2.0 * t).cos()
+                                - 2.0 * (3.0 * t).cos()
+                                - (4.0 * t).cos())
+                                / (16.0 * 6.0)
+                                + 0.45,
+                        ]
+                    },
+                    0.0..TAU,
+                ),
+            ],
             0.00,
-            500,
+            100,
+        )
+    }
+
+    pub fn get_moon() -> Self {
+        Self::new_parametric(
+            vec![
+                (
+                    |t| vec![(t.cos() + 1.0) / 3.0, (t.sin() + 1.0) / 3.0],
+                    0.0..PI,
+                ),
+                (
+                    |t| vec![(t.cos() + 2.0) / 3.0, (-t.sin() + 1.5) / 3.0],
+                    0.0..PI,
+                ),
+                (|t| vec![t, 1.3 - t], 0.5..0.8),
+            ],
+            0.01,
+            100,
         )
     }
 
     /// 2D -> binary label
     pub fn get_circular() -> Self {
         Self::new_parametric(
-            |t| vec![t.sin() / 3.0 + 0.5, t.cos() / 3.0 + 0.5],
-            0.0..TAU,
-            |t| vec![t.sin() / 6.0 + 0.5, t.cos() / 6.0 + 0.5],
-            0.0..TAU,
+            vec![
+                (|t| vec![t.sin() / 3.0 + 0.5, t.cos() / 3.0 + 0.5], 0.0..TAU),
+                (|t| vec![t.sin() / 6.0 + 0.5, t.cos() / 6.0 + 0.5], 0.0..TAU),
+            ],
             0.03,
             100,
         )
@@ -202,10 +219,16 @@ impl Dataset {
     /// 2D -> binary label
     pub fn get_spiral() -> Self {
         Self::new_parametric(
-            |t| vec![0.05 * t * t.cos() + 0.5, 0.05 * t * t.sin() + 0.5],
-            0.0..10.0,
-            |t| vec![-0.05 * t * t.cos() + 0.5, -0.05 * t * t.sin() + 0.5],
-            0.0..10.0,
+            vec![
+                (
+                    |t| vec![0.05 * t * t.cos() + 0.5, 0.05 * t * t.sin() + 0.5],
+                    0.0..10.0,
+                ),
+                (
+                    |t| vec![-0.05 * t * t.cos() + 0.5, -0.05 * t * t.sin() + 0.5],
+                    0.0..10.0,
+                ),
+            ],
             0.01,
             1000,
         )
@@ -241,10 +264,7 @@ impl Dataset {
 
     pub fn get_cross() -> Self {
         Self::new_parametric(
-            |t| vec![0.5, t],
-            0.2..0.8,
-            |t| vec![t, 0.5],
-            0.2..0.8,
+            vec![(|t| vec![0.5, t], 0.2..0.8), (|t| vec![t, 0.5], 0.2..0.8)],
             0.01,
             100,
         )

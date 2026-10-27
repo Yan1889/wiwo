@@ -181,9 +181,9 @@ impl NeuralNet {
     pub fn train(&mut self, dataset: &mut Dataset, epochs: usize) {
         self.assert_matching_dataset(dataset);
 
-        for _ in 0..epochs {
-            let start = Instant::now();
+        let start = Instant::now();
 
+        for _ in 0..epochs {
             dataset.shuffle();
 
             let mut counter = 0;
@@ -254,8 +254,8 @@ impl NeuralNet {
                     counter = 0;
                 }
             }
-            println!("one epoch took {:?}", start.elapsed());
         }
+        println!("{epochs} epochs took {:?}", start.elapsed());
     }
 
     pub fn assert_matching_dataset(&self, dataset: &Dataset) {
