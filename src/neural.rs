@@ -113,7 +113,7 @@ impl NeuralNet {
             biases: layer_sizes
                 .iter()
                 .skip(1)
-                .map(|&n| Matrix::new_random(n, 1))
+                .map(|&n| Matrix::new_random(1, n))
                 .collect(),
             weights: layer_sizes
                 .array_windows()
@@ -127,10 +127,10 @@ impl NeuralNet {
     }
 
     pub fn forward(&self, mut xs: Matrix) -> Matrix {
-        assert_eq!(xs.dimensions(), (self.layer_sizes[0], 1));
+        assert_eq!(xs.dimensions(), (1, self.layer_sizes[0]));
 
         for l in 0..self.depth() {
-            xs = &self.weights[l].transposed() * &xs;
+            xs = &xs * &self.weights[l];
             xs += &self.biases[l];
             xs = if l == self.depth() - 1 {
                 // softmax in output layer
@@ -139,7 +139,7 @@ impl NeuralNet {
                 xs.map(|x| x / sum)
             } else {
                 self.afs[l].map(&xs)
-            }
+            };
         }
         xs
     }
@@ -149,12 +149,10 @@ impl NeuralNet {
 
         let mut counter = 0;
         for (input, label) in dataset.data() {
-            let (i, _) = self
-                .forward(Matrix::new_column(input.clone()))
-                .data()
+            let (i, _) = self.forward(Matrix::new_row(input.clone())).data()[0]
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a[0].total_cmp(&b[0]))
+                .max_by(|(_, a), (_, b)| a.total_cmp(b))
                 .unwrap();
             if i == *label {
                 counter += 1;
@@ -164,14 +162,18 @@ impl NeuralNet {
     }
 
     pub fn cross_entropy(&self, dataset: &Dataset) -> f64 {
+        let start = Instant::now();
+
         self.assert_matching_dataset(dataset);
 
         let mut res = 0.0;
         for (input, label) in dataset.data() {
-            let predicted = self.forward(Matrix::new_column(input.clone()));
+            let predicted = self.forward(Matrix::new_row(input.clone()));
             // -log(p_label)
-            res += -predicted.data()[*label][0].ln();
+            res += -predicted.data()[0][*label].ln();
         }
+
+        println!("loss took {:?}", start.elapsed());
         res / dataset.data().len() as f64
     }
     pub fn train(&mut self, dataset: &mut Dataset, epochs: usize) {
@@ -192,7 +194,7 @@ impl NeuralNet {
                 .layer_sizes
                 .iter()
                 .skip(1)
-                .map(|&n| Matrix::new_column(vec![0.0; n]))
+                .map(|&n| Matrix::new_row(vec![0.0; n]))
                 .collect::<Vec<Matrix>>();
 
             let points = dataset.data().len();
@@ -200,14 +202,12 @@ impl NeuralNet {
             for i in 0..points {
                 let (input, label) = dataset.data()[i].clone();
 
-                let input = Matrix::new_column(input);
-
                 // in the beginning we have an 'a'
                 // layer = (w, z, a)
-                let mut a = vec![input.clone()];
+                let mut a = vec![Matrix::new_row(input)];
                 let mut z = vec![];
                 for l in 0..self.depth() {
-                    let mut z_curr = &self.weights[l].transposed() * a.last().unwrap();
+                    let mut z_curr = a.last().unwrap() * &self.weights[l];
                     z_curr += &self.biases[l];
                     z.push(z_curr);
                     if l == self.depth() - 1 {
@@ -221,10 +221,10 @@ impl NeuralNet {
                 }
 
                 // dL/dz = ŷ - y
-                let mut deltas = Matrix::new_column(vec![0.0; dataset.dimensions().1]);
+                let mut deltas = Matrix::new_row(vec![0.0; dataset.dimensions().1]);
                 for i in 0..dataset.dimensions().1 {
-                    deltas.data_mut()[i][0] =
-                        a.last().unwrap().data()[i][0] - (i == label) as u8 as f64
+                    deltas.data_mut()[0][i] =
+                        a.last().unwrap().data()[0][i] - (i == label) as u8 as f64
                 }
 
                 for l in (0..self.depth()).rev() {
@@ -234,8 +234,8 @@ impl NeuralNet {
                         deltas = deltas.element_mul(&self.afs[l].map_derivative(&z[l]));
                     }
                     bias_gradient[l] += &deltas;
-                    weight_gradient[l] += &(&a[l] * &deltas.transposed());
-                    deltas = &self.weights[l] * &deltas;
+                    weight_gradient[l] += &(&a[l].transposed() * &deltas);
+                    deltas = &deltas * &self.weights[l].transposed();
                 }
 
                 counter += 1;
@@ -249,7 +249,7 @@ impl NeuralNet {
                         // reset gradients back to 0
                         weight_gradient[l] =
                             Matrix::new_zero(self.layer_sizes[l], self.layer_sizes[l + 1]);
-                        bias_gradient[l] = Matrix::new_column(vec![0.0; self.layer_sizes[l + 1]]);
+                        bias_gradient[l] = Matrix::new_row(vec![0.0; self.layer_sizes[l + 1]]);
                     }
                     counter = 0;
                 }

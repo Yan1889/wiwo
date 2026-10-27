@@ -130,7 +130,7 @@ impl Dataset {
         assert_eq!(u32::from_be_bytes(cols), 28);
 
         // for _ in 0..u32::from_be_bytes(count) {
-        for _ in 0..6000 {
+        for _ in 0..60_000 {
             let mut buf = vec![0; 784];
             br_image.read_exact(&mut buf).unwrap();
             let mut label = [0];

@@ -24,8 +24,8 @@ impl Matrix {
         }
         Self(res)
     }
-    pub fn new_column(xs: Vec<f64>) -> Self {
-        Self(xs.into_iter().map(|x| vec![x]).collect())
+    pub fn new_row(xs: Vec<f64>) -> Self {
+        Self(vec![xs])
     }
     pub fn dimensions(&self) -> (usize, usize) {
         (self.0.len(), self.0[0].len())
@@ -119,7 +119,13 @@ impl Sub<&Matrix> for &Matrix {
 }
 impl SubAssign<&Matrix> for Matrix {
     fn sub_assign(&mut self, other: &Matrix) {
-        *self = &*self - other;
+        assert_eq!(self.dimensions(), other.dimensions());
+        let (m, n) = self.dimensions();
+        for i in 0..m {
+            for j in 0..n {
+                self.data_mut()[i][j] -= other.data()[i][j];
+            }
+        }
     }
 }
 
