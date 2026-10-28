@@ -47,7 +47,7 @@ async fn main() {
         let start = Instant::now();
         println!(
             "k = {k}: {:.2}%, took {:?}",
-            knn_accuracy(&train, &test, k) * 100.0,
+            knn_accuracy(&train, &test, k, false) * 100.0,
             start.elapsed()
         );
     }

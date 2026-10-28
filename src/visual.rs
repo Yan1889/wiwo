@@ -253,7 +253,7 @@ pub fn draw_colored_plane_knn(dataset: &mut Dataset, k: usize, win: WindowPos) {
             let y = (j + 1) as f32 / resolution as f32;
             let w = 1.0 / resolution as f32;
             let h = 1.0 / resolution as f32;
-            let label = knn_classify(dataset, &[x as f64, y as f64], k);
+            let label = knn_classify(dataset, &[x as f64, y as f64], k, false);
             let color = if dataset.dimensions().1 == 3 {
                 match label {
                     0 => RED,

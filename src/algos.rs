@@ -2,18 +2,23 @@ use std::collections::HashSet;
 
 use crate::data::Dataset;
 
-pub fn knn_classify(dataset: &Dataset, p: &[f64], k: usize) -> usize {
+pub fn knn_classify(dataset: &Dataset, p: &[f64], k: usize, manhattan: bool) -> usize {
     let mut distances = Vec::new();
     for known in &dataset.data {
-        // manhattan distance
-        distances.push(
-            known
-                .0
-                .iter()
-                .zip(p.iter())
-                .map(|(x, y)| (x - y).abs())
-                .sum::<f64>(),
-        );
+        let d = known
+            .0
+            .iter()
+            .zip(p.iter())
+            .map(|(x, y)| {
+                if manhattan {
+                    (x - y).abs()
+                } else {
+                    // euclid
+                    (x - y).powi(2)
+                }
+            })
+            .sum::<f64>();
+        distances.push(if manhattan { d } else { d.sqrt() });
     }
     let mut votes = vec![0; dataset.classes];
     let mut used = HashSet::new();
@@ -38,10 +43,10 @@ pub fn knn_classify(dataset: &Dataset, p: &[f64], k: usize) -> usize {
         .0
 }
 
-pub fn knn_accuracy(train: &Dataset, test: &Dataset, k: usize) -> f64 {
+pub fn knn_accuracy(train: &Dataset, test: &Dataset, k: usize, manhattan: bool) -> f64 {
     let mut count = 0;
     for (input, label) in &test.data {
-        if knn_classify(train, input, k) == *label {
+        if knn_classify(train, input, k, manhattan) == *label {
             count += 1;
         }
     }
