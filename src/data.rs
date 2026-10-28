@@ -5,6 +5,7 @@ use std::{
     ops::Range,
 };
 
+use ordered_float::OrderedFloat;
 use rand::seq::SliceRandom;
 
 pub struct Dataset {
@@ -95,11 +96,11 @@ impl Dataset {
         full
     }
 
-    pub fn get_mnist() -> Self {
+    pub fn load_mnist_file(file_images: &str, file_labels: &str) -> Self {
         let mut data = Vec::new();
 
-        let mut br_image = BufReader::new(File::open("data/train-images.idx3-ubyte").unwrap());
-        let mut br_label = BufReader::new(File::open("data/train-labels.idx1-ubyte").unwrap());
+        let mut br_image = BufReader::new(File::open(file_images).unwrap());
+        let mut br_label = BufReader::new(File::open(file_labels).unwrap());
 
         let mut magic = [0; 4];
         br_image.read_exact(&mut magic).unwrap();
@@ -107,11 +108,11 @@ impl Dataset {
         br_label.read_exact(&mut magic).unwrap();
         assert_eq!(0x00000801, u32::from_be_bytes(magic));
 
-        let mut count = [0; 4];
-        br_image.read_exact(&mut count).unwrap();
-        assert_eq!(u32::from_be_bytes(count), 60_000);
-        br_label.read_exact(&mut count).unwrap();
-        assert_eq!(u32::from_be_bytes(count), 60_000);
+        let mut count_images = [0; 4];
+        br_image.read_exact(&mut count_images).unwrap();
+        let mut count_labels = [0; 4];
+        br_label.read_exact(&mut count_labels).unwrap();
+        assert_eq!(count_images, count_labels);
 
         let mut rows = [0; 4];
         br_image.read_exact(&mut rows).unwrap();
@@ -121,7 +122,7 @@ impl Dataset {
         assert_eq!(u32::from_be_bytes(cols), 28);
 
         // for _ in 0..u32::from_be_bytes(count) {
-        for _ in 0..1000 {
+        for _ in 0..u32::from_be_bytes(count_images) {
             let mut buf = vec![0; 784];
             br_image.read_exact(&mut buf).unwrap();
             let mut label = [0];
@@ -132,6 +133,32 @@ impl Dataset {
             ));
         }
         Self::new(data, 10)
+    }
+
+    pub fn get_mnist() -> (Self, Self) {
+        (
+            Self::load_mnist_file(
+                "data/mnist/train-images.idx3-ubyte",
+                "data/mnist/train-labels.idx1-ubyte",
+            ),
+            Self::load_mnist_file(
+                "data/mnist/t10k-images.idx3-ubyte",
+                "data/mnist/t10k-labels.idx1-ubyte",
+            ),
+        )
+    }
+
+    pub fn get_fashion_mnist() -> (Self, Self) {
+        (
+            Self::load_mnist_file(
+                "data/fashion-mnist/train-images.idx3-ubyte",
+                "data/fashion-mnist/train-labels.idx1-ubyte",
+            ),
+            Self::load_mnist_file(
+                "data/fashion-mnist/t10k-images.idx3-ubyte",
+                "data/fashion-mnist/t10k-labels.idx1-ubyte",
+            ),
+        )
     }
 
     /// 2D -> [0; 1]
@@ -287,21 +314,17 @@ impl Dataset {
         Self::new(data, 3)
     }
 
+    /*
     pub fn knn_sort(&mut self, p: &[f64]) {
-        self.data.sort_by(|(a, _), (b, _)| {
-            let dist1 = a
-                .iter()
-                .zip(p.iter())
-                .map(|(&x, &y)| (x - y).abs())
-                .sum::<f64>();
-            let dist2 = b
-                .iter()
-                .zip(p.iter())
-                .map(|(&x, &y)| (x - y).abs())
-                .sum::<f64>();
-            dist1.total_cmp(&dist2)
+        self.data.sort_by_key(|(a, _)| {
+            OrderedFloat(
+                a.iter()
+                    .zip(p.iter())
+                    .map(|(x, y)| (x - y).abs())
+                    .sum::<f64>(),
+            )
         });
-    }
+    }*/
 
     /// returns 75% train, 25% test
     pub fn split(self) -> (Self, Self) {

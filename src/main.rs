@@ -41,12 +41,16 @@ async fn main() {
     // let [win_loss, win_accuracy, win_plane_test, win_plane_train] = WindowPos::split_quad();
     // let [win_loss, win_accuracy] = WindowPos::split_v();
     // let [win1, win2, win3, win4] = WindowPos::split_quad();
-    let win = WindowPos::full();
-    let (mut train, test) = Dataset::get_mnist().normalized().split();
-    let start = Instant::now();
-    let k = 1;
-    println!("{}", knn_accuracy(&mut train, &test, k));
-    println!("{:?}", start.elapsed());
+    // let win = WindowPos::full();
+    let (train, test) = Dataset::get_mnist();
+    for k in [1, 3, 5, 7, 15] {
+        let start = Instant::now();
+        println!(
+            "k = {k}: {:.2}%, took {:?}",
+            knn_accuracy(&train, &test, k) * 100.0,
+            start.elapsed()
+        );
+    }
 
     loop {
         // net.train(&mut train, 10);
@@ -60,7 +64,6 @@ async fn main() {
         // draw_accuracy(&accuracy_train, &accuracy_test, win_accuracy);
         // draw_colored_plane_knn(&mut train, 1, win_plane_train);
         // draw_colored_plane_knn(&mut test, 1, win_plane_test);
-        // draw_colored_plane_knn(&mut train, k, win);
         next_frame().await;
     }
 }
