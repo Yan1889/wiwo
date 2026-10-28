@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 use rand::RngExt;
 
@@ -162,5 +162,34 @@ impl Mul<f64> for &Matrix {
             cols: self.cols,
             data,
         }
+    }
+}
+
+impl MulAssign<f64> for Matrix {
+    fn mul_assign(&mut self, x: f64) {
+        for i in 0..self.rows * self.cols {
+            self.data[i] *= x;
+        }
+    }
+}
+
+impl Div<f64> for &Matrix {
+    type Output = Matrix;
+    fn div(self, x: f64) -> Self::Output {
+        let mut data = vec![0.0; self.rows * self.cols];
+        for i in 0..self.rows * self.cols {
+            data[i] = self.data[i] / x;
+        }
+        Matrix {
+            rows: self.rows,
+            cols: self.cols,
+            data,
+        }
+    }
+}
+
+impl DivAssign<f64> for Matrix {
+    fn div_assign(&mut self, x: f64) {
+        *self *= 1.0 / x;
     }
 }

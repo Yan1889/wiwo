@@ -9,6 +9,7 @@ use crate::{
     visual::{Border, WindowPos, draw_accuracy, draw_colored_plane, draw_loss},
 };
 
+mod algos;
 mod data;
 mod linalg;
 mod neural;
@@ -16,14 +17,15 @@ mod visual;
 
 #[macroquad::main("Machine Learning")]
 async fn main() {
-    let mut net = NeuralNetBuilder::new(vec![2, 16, 16, 3])
+    let mut net = NeuralNetBuilder::new(vec![2, 16, 16, 2])
         .set_activation_functions(vec![ActivationFunction::Tanh, ActivationFunction::Tanh])
-        .set_learning_rate(0.01)
-        .set_batch_size(1)
+        .set_learning_rate(0.003)
+        .set_batch_size(64)
+        .set_momentum(0.9)
         .build();
 
     Dataset::get_mnist();
-    let (mut train, test) = Dataset::get_moon().split();
+    let (mut train, test) = Dataset::get_spiral().split();
 
     let mut loss_test = vec![net.cross_entropy(&test)];
     let mut loss_train = vec![net.cross_entropy(&train)];
@@ -33,7 +35,7 @@ async fn main() {
     let [win_loss, win_accuracy, win_plane_test, win_plane_train] = WindowPos::split_quad();
     // let [win_loss, win_accuracy] = WindowPos::split_v();
     loop {
-        net.train(&mut train, 1);
+        net.train(&mut train, 10);
         loss_test.push(net.cross_entropy(&test));
         loss_train.push(net.cross_entropy(&train));
         accuracy_test.push(net.accuracy(&test));
@@ -42,7 +44,7 @@ async fn main() {
         clear_background(GREEN);
         draw_loss(&loss_train, &loss_test, win_loss);
         draw_accuracy(&accuracy_train, &accuracy_test, win_accuracy);
-        draw_colored_plane(&net, &train, Border::Lerp, win_plane_train);
+        draw_colored_plane(&net, &train, Border::White, win_plane_train);
         draw_colored_plane(&net, &test, Border::Discrete, win_plane_test);
         next_frame().await;
     }

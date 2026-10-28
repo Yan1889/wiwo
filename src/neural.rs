@@ -55,6 +55,7 @@ pub struct NeuralNetBuilder {
     learning_rate: f64,
     layer_sizes: Vec<usize>,
     batch_size: usize,
+    momentum: f64,
 }
 impl NeuralNetBuilder {
     pub fn new(layer_sizes: Vec<usize>) -> Self {
@@ -63,6 +64,7 @@ impl NeuralNetBuilder {
             learning_rate: 0.01,
             layer_sizes,
             batch_size: 1,
+            momentum: 0.0,
         }
     }
     pub fn set_activation_functions(mut self, afs: Vec<ActivationFunction>) -> Self {
@@ -77,12 +79,17 @@ impl NeuralNetBuilder {
         self.batch_size = n;
         self
     }
+    pub fn set_momentum(mut self, b: f64) -> Self {
+        self.momentum = b;
+        self
+    }
     pub fn build(self) -> NeuralNet {
         NeuralNet::new(
             self.layer_sizes,
             self.afs,
             self.learning_rate,
             self.batch_size,
+            self.momentum,
         )
     }
 }
@@ -97,6 +104,7 @@ pub struct NeuralNet {
     // hyper-parameters
     learning_rate: f64,
     batch_size: usize,
+    momentum: f64,
 }
 
 impl NeuralNet {
@@ -105,6 +113,7 @@ impl NeuralNet {
         afs: Vec<ActivationFunction>,
         learning_rate: f64,
         batch_size: usize,
+        momentum: f64,
     ) -> Self {
         assert_eq!(afs.len(), layer_sizes.len() - 2);
         assert!(0.0 < learning_rate && learning_rate <= 1.0);
@@ -123,6 +132,7 @@ impl NeuralNet {
             layer_sizes,
             learning_rate,
             batch_size,
+            momentum,
         }
     }
 
@@ -199,6 +209,9 @@ impl NeuralNet {
                 .map(|&n| Matrix::new_row(vec![0.0; n]))
                 .collect::<Vec<Matrix>>();
 
+            let mut rolling_weights_gradient = weight_gradient.clone();
+            let mut rolling_bias_gradient = bias_gradient.clone();
+
             let points = dataset.data().len();
 
             for i in 0..points {
@@ -241,15 +254,23 @@ impl NeuralNet {
                 counter += 1;
                 if counter == self.batch_size || i == points - 1 {
                     for l in 0..self.depth() {
-                        // update parameters
-                        let f = self.learning_rate * 1.0 / counter as f64;
-                        self.weights[l] -= &(&weight_gradient[l] * f);
-                        self.biases[l] -= &(&bias_gradient[l] * f);
+                        // decay of old gradients
+                        rolling_weights_gradient[l] *= self.momentum;
+                        rolling_bias_gradient[l] *= self.momentum;
 
-                        // reset gradients back to 0
-                        weight_gradient[l] =
-                            Matrix::new_zero(self.layer_sizes[l], self.layer_sizes[l + 1]);
-                        bias_gradient[l] = Matrix::new_row(vec![0.0; self.layer_sizes[l + 1]]);
+                        // adding the new gradients
+                        rolling_weights_gradient[l] +=
+                            &(&weight_gradient[l] * ((1.0 - self.momentum) / counter as f64));
+                        rolling_bias_gradient[l] +=
+                            &(&bias_gradient[l] * ((1.0 - self.momentum) / counter as f64));
+
+                        // update parameters
+                        self.weights[l] -= &(&rolling_weights_gradient[l] * self.learning_rate);
+                        self.biases[l] -= &(&bias_gradient[l] * self.learning_rate);
+
+                        // reset gradients back to 0 to start accumulation again
+                        weight_gradient[l].data.fill(0.0);
+                        bias_gradient[l].data.fill(0.0);
                     }
                     counter = 0;
                 }

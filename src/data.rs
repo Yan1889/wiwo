@@ -8,8 +8,8 @@ use std::{
 use rand::seq::SliceRandom;
 
 pub struct Dataset {
-    data: Vec<(Vec<f64>, usize)>,
-    classes: usize,
+    pub data: Vec<(Vec<f64>, usize)>,
+    pub classes: usize,
 }
 
 impl Dataset {
@@ -285,6 +285,22 @@ impl Dataset {
             }
         }
         Self::new(data, 3)
+    }
+
+    pub fn knn_sort(&mut self, p: &[f64]) {
+        self.data.sort_by(|(a, _), (b, _)| {
+            let dist1 = a
+                .iter()
+                .zip(p.iter())
+                .map(|(&x, &y)| (x - y).abs())
+                .sum::<f64>();
+            let dist2 = b
+                .iter()
+                .zip(p.iter())
+                .map(|(&x, &y)| (x - y).abs())
+                .sum::<f64>();
+            dist1.total_cmp(&dist2)
+        });
     }
 
     /// returns 75% train, 25% test
