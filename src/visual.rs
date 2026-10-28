@@ -6,7 +6,7 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 
-use crate::{data::Dataset, linalg::Matrix, neural::NeuralNet};
+use crate::{algos::knn_classify, data::Dataset, linalg::Matrix, neural::NeuralNet};
 
 #[derive(Debug, Clone, Copy)]
 pub struct WindowPos {
@@ -170,7 +170,7 @@ pub fn draw_loss(train: &[f64], test: &[f64], win: WindowPos) {
         GRAY,
     );
 }
-pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, border: Border, win: WindowPos) {
+pub fn draw_colored_plane_net(net: &NeuralNet, dataset: &Dataset, border: Border, win: WindowPos) {
     win.clear(BLACK);
     // 0 = red, 1 = blue, 2 = green
     let resolution = 100;
@@ -219,6 +219,52 @@ pub fn draw_colored_plane(net: &NeuralNet, dataset: &Dataset, border: Border, wi
                 }
             };
 
+            draw_rectangle(
+                win.map_x(x),
+                win.map_y(1.0 - y),
+                w * screen_width() * win.w,
+                h * screen_height() * win.h,
+                color,
+            );
+        }
+    }
+    for (input, label) in dataset.data() {
+        let (x, y) = (input[0], input[1]);
+        draw_circle(
+            win.map_x(x as f32),
+            win.map_y(1.0 - y as f32),
+            0.003 * screen_width(),
+            match *label {
+                0 => RED,
+                1 => BLUE,
+                2 => GREEN,
+                _ => panic!(),
+            },
+        );
+    }
+}
+
+pub fn draw_colored_plane_knn(dataset: &mut Dataset, k: usize, win: WindowPos) {
+    win.clear(BLACK);
+    let resolution = 100;
+    for i in 0..resolution {
+        for j in 0..resolution {
+            let x = i as f32 / resolution as f32;
+            let y = (j + 1) as f32 / resolution as f32;
+            let w = 1.0 / resolution as f32;
+            let h = 1.0 / resolution as f32;
+            let label = knn_classify(dataset, &[x as f64, y as f64], k);
+            let color = if dataset.dimensions().1 == 3 {
+                match label {
+                    0 => RED,
+                    1 => BLUE,
+                    2 => GREEN,
+                    _ => panic!(),
+                }
+                .with_alpha(0.5)
+            } else {
+                if label == 0 { RED } else { BLUE }.with_alpha(0.5)
+            };
             draw_rectangle(
                 win.map_x(x),
                 win.map_y(1.0 - y),

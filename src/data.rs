@@ -121,7 +121,7 @@ impl Dataset {
         assert_eq!(u32::from_be_bytes(cols), 28);
 
         // for _ in 0..u32::from_be_bytes(count) {
-        for _ in 0..60_000 {
+        for _ in 0..1000 {
             let mut buf = vec![0; 784];
             br_image.read_exact(&mut buf).unwrap();
             let mut label = [0];
@@ -212,7 +212,7 @@ impl Dataset {
                 (|t| vec![t.sin() / 6.0 + 0.5, t.cos() / 6.0 + 0.5], 0.0..TAU),
             ],
             0.03,
-            100,
+            50,
         )
     }
 
@@ -230,7 +230,7 @@ impl Dataset {
                 ),
             ],
             0.01,
-            1000,
+            100,
         )
     }
     /// 2D -> binary label
