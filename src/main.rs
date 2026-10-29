@@ -1,4 +1,10 @@
-use std::{fs::File, io::Write, time::Instant};
+use std::{
+    fs::File,
+    io::Write,
+    sync::{Arc, Mutex},
+    thread,
+    time::Instant,
+};
 
 use itertools::Itertools;
 /*
@@ -79,36 +85,53 @@ fn main() {
 }
 
 pub fn collect_data() {
-    let (mut train, test) = Dataset::get_mnist();
+    std::fs::create_dir_all("output").unwrap();
 
-    let mut file = File::create(format!("output/results_{}.csv", rand::random::<u32>())).unwrap();
-    file.write_all(b"activation_function,architecture,accuracy,time\n")
+    let file = Arc::new(Mutex::new(
+        File::create(format!("output/results_{}.csv", rand::random::<u32>())).unwrap(),
+    ));
+    file.lock()
+        .unwrap()
+        .write_all(b"activation_function,architecture,accuracy,time\n")
         .unwrap();
+
+    let mut handles = Vec::new();
 
     // 2 activation functions: ReLU, Tanh
     // 3 architectures: 256-128-64 (large), 64-16 (medium), <nothing> (small)
     for activation_function in [ActivationFunction::ReLU, ActivationFunction::Tanh] {
         for mut architecture in [vec![], vec![64, 16], vec![256, 128, 64]] {
-            // add input and output layers
-            architecture.insert(0, 784);
-            architecture.push(10);
+            let file = file.clone();
+            handles.push(thread::spawn(move || {
+                let (mut train, test) = Dataset::get_mnist();
 
-            let mut net = NeuralNetBuilder::new(architecture.clone())
-                .set_activation_functions(vec![activation_function; architecture.len() - 2])
-                .build();
-            let start = Instant::now();
-            net.train(&mut train, 10);
-            file.write_all(
-                format!(
-                    "{:?},{},{:.2}%,{:?}\n",
-                    activation_function,
-                    architecture.iter().join("-"),
-                    net.accuracy(&test) * 100.0,
-                    start.elapsed(),
-                )
-                .as_bytes(),
-            )
-            .unwrap();
+                // add input and output layers
+                architecture.insert(0, 784);
+                architecture.push(10);
+
+                let mut net = NeuralNetBuilder::new(architecture.clone())
+                    .set_activation_functions(vec![activation_function; architecture.len() - 2])
+                    .build();
+                let start = Instant::now();
+                net.train(&mut train, 1);
+
+                file.lock()
+                    .unwrap()
+                    .write_all(
+                        format!(
+                            "{:?},{},{:.2}%,{:?}\n",
+                            activation_function,
+                            architecture.iter().join("-"),
+                            net.accuracy(&test) * 100.0,
+                            start.elapsed(),
+                        )
+                        .as_bytes(),
+                    )
+                    .unwrap();
+            }));
         }
+    }
+    for h in handles {
+        h.join().unwrap();
     }
 }
