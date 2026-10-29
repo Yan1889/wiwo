@@ -23,7 +23,7 @@ impl Matrix {
     pub fn new_random(rows: usize, cols: usize) -> Self {
         let mut data = vec![0.0; rows * cols];
         for i in 0..rows * cols {
-            data[i] = rand::rng().random_range(-1.0..1.0);
+            data[i] = rand::rng().random_range(-0.1..0.1);
         }
         Self { rows, cols, data }
     }

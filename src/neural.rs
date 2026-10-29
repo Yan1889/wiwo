@@ -266,7 +266,7 @@ impl NeuralNet {
 
                         // update parameters
                         self.weights[l] -= &(&rolling_weights_gradient[l] * self.learning_rate);
-                        self.biases[l] -= &(&bias_gradient[l] * self.learning_rate);
+                        self.biases[l] -= &(&rolling_bias_gradient[l] * self.learning_rate);
 
                         // reset gradients back to 0 to start accumulation again
                         weight_gradient[l].data.fill(0.0);
@@ -287,7 +287,6 @@ impl NeuralNet {
         (self.layer_sizes[0], *self.layer_sizes.last().unwrap())
     }
 
-    // # of hidden layers
     pub fn depth(&self) -> usize {
         self.layer_sizes.len() - 1
     }
