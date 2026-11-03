@@ -1,4 +1,3 @@
-/*
 use itertools::Itertools;
 use macroquad::{
     color::{BLACK, BLUE, Color, GRAY, GREEN, RED, WHITE},
@@ -290,4 +289,3 @@ pub fn draw_colored_plane_knn(dataset: &mut Dataset, k: usize, win: WindowPos) {
         );
     }
 }
-*/

@@ -7,20 +7,21 @@ use std::{
 };
 
 use itertools::Itertools;
-/*
+use macroquad::prelude::*;
+
 use macroquad::{
     color::GREEN,
+    prelude::*,
     window::{clear_background, next_frame},
 };
-*/
 
 use crate::{
     algos::knn_accuracy,
     data::Dataset,
-    neural::{ActivationFunction, NeuralNetBuilder},
-    // visual::{
-    //     Border, WindowPos, draw_accuracy, draw_colored_plane_knn, draw_colored_plane_net, draw_loss,
-    // },
+    neural::{
+        ActivationFunction::{self, ReLU},
+        NeuralNetBuilder,
+    },
 };
 
 mod algos;
@@ -31,8 +32,18 @@ mod visual;
 
 // #[macroquad::main("Machine Learning")]
 fn main() {
-    collect_data();
-    return;
+    // collect_data();
+    let mut net = NeuralNetBuilder::new(vec![784, 64, 10])
+        .set_activation_functions(vec![ReLU])
+        .set_learning_rate(0.01)
+        .set_momentum(0.0)
+        .set_batch_size(1)
+        .build();
+    let (mut train, test) = Dataset::get_mnist();
+    loop {
+        net.train(&mut train, 1);
+        println!("{}", net.accuracy(&test));
+    }
     /*
     let deep = vec![784, 256, 128, 64, 10];
     let shallow = vec![784, 16, 16, 10];
@@ -88,47 +99,57 @@ pub fn collect_data() {
     std::fs::create_dir_all("output").unwrap();
 
     let file = Arc::new(Mutex::new(
-        File::create(format!("output/results_{}.csv", rand::random::<u32>())).unwrap(),
+        File::create(format!("output/results_{}.csv", rand::rand())).unwrap(),
     ));
     file.lock()
         .unwrap()
-        .write_all(b"activation_function,architecture,accuracy,time\n")
+        .write_all(b"activation_function,learning_rate,architecture,accuracy,time\n")
         .unwrap();
 
     let mut handles = Vec::new();
 
     // 2 activation functions: ReLU, Tanh
     // 3 architectures: 256-128-64 (large), 64-16 (medium), <nothing> (small)
-    for activation_function in [ActivationFunction::ReLU, ActivationFunction::Tanh] {
-        for mut architecture in [vec![], vec![64, 16], vec![256, 128, 64]] {
-            let file = file.clone();
-            handles.push(thread::spawn(move || {
-                let (mut train, test) = Dataset::get_mnist();
+    for activation_function in [
+        ActivationFunction::ReLU,
+        ActivationFunction::Tanh,
+        ActivationFunction::Sigmoid,
+    ] {
+        for learning_rate in [0.1, 0.01, 0.001] {
+            for mut architecture in [vec![], vec![16, 16], vec![64, 64], vec![256, 128, 64]] {
+                let file = file.clone();
+                handles.push(thread::spawn(move || {
+                    let (mut train, test) = Dataset::get_mnist();
 
-                // add input and output layers
-                architecture.insert(0, 784);
-                architecture.push(10);
+                    // add input and output layers
+                    architecture.insert(0, 784);
+                    architecture.push(10);
 
-                let mut net = NeuralNetBuilder::new(architecture.clone())
-                    .set_activation_functions(vec![activation_function; architecture.len() - 2])
-                    .build();
-                let start = Instant::now();
-                net.train(&mut train, 1);
+                    let mut net = NeuralNetBuilder::new(architecture.clone())
+                        .set_activation_functions(vec![activation_function; architecture.len() - 2])
+                        .set_learning_rate(learning_rate)
+                        .set_momentum(0.0)
+                        .set_batch_size(1)
+                        .build();
+                    let start = Instant::now();
+                    net.train(&mut train, 20);
 
-                file.lock()
-                    .unwrap()
-                    .write_all(
-                        format!(
-                            "{:?},{},{:.2}%,{:?}\n",
-                            activation_function,
-                            architecture.iter().join("-"),
-                            net.accuracy(&test) * 100.0,
-                            start.elapsed(),
+                    file.lock()
+                        .unwrap()
+                        .write_all(
+                            format!(
+                                "{:?},{},{},{:.2}%,{:?}\n",
+                                activation_function,
+                                learning_rate,
+                                architecture.iter().join("-"),
+                                net.accuracy(&test) * 100.0,
+                                start.elapsed(),
+                            )
+                            .as_bytes(),
                         )
-                        .as_bytes(),
-                    )
-                    .unwrap();
-            }));
+                        .unwrap();
+                }));
+            }
         }
     }
     for h in handles {
