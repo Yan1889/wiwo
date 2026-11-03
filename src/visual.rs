@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use macroquad::{
     color::{BLACK, BLUE, Color, GRAY, GREEN, RED, WHITE},
+    input::{is_mouse_button_down, mouse_position},
     shapes::{draw_circle, draw_line, draw_rectangle},
     text::draw_text,
     window::{screen_height, screen_width},
@@ -308,4 +309,15 @@ pub fn draw_digit(data: &[f64], win: WindowPos) {
             );
         }
     }
+}
+
+pub fn paint_brush(data: &mut [f64], win: WindowPos) {
+    if is_mouse_button_down(macroquad::input::MouseButton::Left) {
+        // update data
+        let (x, y) = mouse_position();
+        let col = (x / screen_width() * 28.0) as usize;
+        let row = (y / screen_height() * 28.0) as usize;
+        data[row * 28 + col] = 1.0;
+    }
+    draw_digit(data, win);
 }
