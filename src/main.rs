@@ -16,12 +16,12 @@ use macroquad::{
 };
 
 use crate::{
-    algos::knn_accuracy,
     data::Dataset,
     neural::{
         ActivationFunction::{self, ReLU},
         NeuralNetBuilder,
     },
+    visual::{WindowPos, draw_digit},
 };
 
 mod algos;
@@ -30,129 +30,21 @@ mod linalg;
 mod neural;
 mod visual;
 
-// #[macroquad::main("Machine Learning")]
-fn main() {
-    // collect_data();
-    let mut net = NeuralNetBuilder::new(vec![784, 64, 10])
-        .set_activation_functions(vec![ReLU])
-        .set_learning_rate(0.01)
-        .set_momentum(0.0)
-        .set_batch_size(1)
-        .build();
-    let (mut train, test) = Dataset::get_mnist();
-    loop {
-        net.train(&mut train, 1);
-        println!("{}", net.accuracy(&test));
+pub fn conf() -> Conf {
+    Conf {
+        window_title: "Neural net".to_string(),
+        window_width: 700,
+        window_height: 700,
+        ..Default::default()
     }
-    /*
-    let deep = vec![784, 256, 128, 64, 10];
-    let shallow = vec![784, 16, 16, 10];
-    let mut net = NeuralNetBuilder::new(shallow)
-        .set_activation_functions(vec![ActivationFunction::ReLU, ActivationFunction::ReLU])
-        .set_learning_rate(0.001)
-        .set_batch_size(1)
-        .set_momentum(0.0)
-        .build();
-
-    let (mut train, test) = Dataset::get_mnist();
-
-    let mut loss_test = vec![net.cross_entropy(&test)];
-    let mut loss_train = vec![net.cross_entropy(&train)];
-    let mut accuracy_test = vec![net.accuracy(&test)];
-    let mut accuracy_train = vec![net.accuracy(&train)];
-    */
-
-    // let [win_loss, win_accuracy, win_plane_test, win_plane_train] = WindowPos::split_quad();
-    // let [win_loss, win_accuracy] = WindowPos::split_v();
-    // let [win1, win2, win3, win4] = WindowPos::split_quad();
-    // let win = WindowPos::full();
-    /*
-    let (train, test) = Dataset::get_mnist();
-    for k in [1, 3, 5, 7, 15] {
-        let start = Instant::now();
-        println!(
-            "k = {k}: {:.2}%, took {:?}",
-            knn_accuracy(&train, &test, k, false) * 100.0,
-            start.elapsed()
-        );
-    }
-    */
-    /*
-    loop {
-        net.train(&mut train, 1);
-        loss_test.push(net.cross_entropy(&test));
-        loss_train.push(net.cross_entropy(&train));
-        accuracy_test.push(net.accuracy(&test));
-        accuracy_train.push(net.accuracy(&train));
-
-        clear_background(GREEN);
-        draw_loss(&loss_train, &loss_test, win_loss);
-        draw_accuracy(&accuracy_train, &accuracy_test, win_accuracy);
-        // draw_colored_plane_knn(&mut train, 1, win_plane_train);
-        // draw_colored_plane_knn(&mut test, 1, win_plane_test);
-        next_frame().await;
-    }
-    */
 }
 
-pub fn collect_data() {
-    std::fs::create_dir_all("output").unwrap();
-
-    let file = Arc::new(Mutex::new(
-        File::create(format!("output/results_{}.csv", rand::rand())).unwrap(),
-    ));
-    file.lock()
-        .unwrap()
-        .write_all(b"activation_function,learning_rate,architecture,accuracy,time\n")
-        .unwrap();
-
-    let mut handles = Vec::new();
-
-    // 2 activation functions: ReLU, Tanh
-    // 3 architectures: 256-128-64 (large), 64-16 (medium), <nothing> (small)
-    for activation_function in [
-        ActivationFunction::ReLU,
-        ActivationFunction::Tanh,
-        ActivationFunction::Sigmoid,
-    ] {
-        for learning_rate in [0.1, 0.01, 0.001] {
-            for mut architecture in [vec![], vec![16, 16], vec![64, 64], vec![256, 128, 64]] {
-                let file = file.clone();
-                handles.push(thread::spawn(move || {
-                    let (mut train, test) = Dataset::get_mnist();
-
-                    // add input and output layers
-                    architecture.insert(0, 784);
-                    architecture.push(10);
-
-                    let mut net = NeuralNetBuilder::new(architecture.clone())
-                        .set_activation_functions(vec![activation_function; architecture.len() - 2])
-                        .set_learning_rate(learning_rate)
-                        .set_momentum(0.0)
-                        .set_batch_size(1)
-                        .build();
-                    let start = Instant::now();
-                    net.train(&mut train, 20);
-
-                    file.lock()
-                        .unwrap()
-                        .write_all(
-                            format!(
-                                "{:?},{},{},{:.2}%,{:?}\n",
-                                activation_function,
-                                learning_rate,
-                                architecture.iter().join("-"),
-                                net.accuracy(&test) * 100.0,
-                                start.elapsed(),
-                            )
-                            .as_bytes(),
-                        )
-                        .unwrap();
-                }));
-            }
-        }
-    }
-    for h in handles {
-        h.join().unwrap();
+#[macroquad::main(conf)]
+async fn main() {
+    let (train, test) = Dataset::get_mnist();
+    let win = WindowPos::full();
+    loop {
+        draw_digit(&test.data[0].0, win);
+        next_frame().await
     }
 }

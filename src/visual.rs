@@ -289,3 +289,23 @@ pub fn draw_colored_plane_knn(dataset: &mut Dataset, k: usize, win: WindowPos) {
         );
     }
 }
+
+pub fn draw_digit(data: &[f64], win: WindowPos) {
+    win.clear(BLACK);
+    for row in 0..28 {
+        for col in 0..28 {
+            let x = col as f32 / 28.0;
+            let y = row as f32 / 28.0;
+            let w = 1.0 / 28.0;
+            let h = 1.0 / 28.0;
+            let a = data[row * 28 + col] as f32;
+            draw_rectangle(
+                win.map_x(x),
+                win.map_y(y),
+                w * win.w * screen_width(),
+                h * win.h * screen_height(),
+                Color::new(a, a, a, 1.0),
+            );
+        }
+    }
+}
