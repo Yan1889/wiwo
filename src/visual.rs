@@ -315,9 +315,19 @@ pub fn paint_brush(data: &mut [f64], win: WindowPos) {
     if is_mouse_button_down(macroquad::input::MouseButton::Left) {
         // update data
         let (x, y) = mouse_position();
-        let col = (x / screen_width() * 28.0) as usize;
-        let row = (y / screen_height() * 28.0) as usize;
-        data[row * 28 + col] = 1.0;
+        let col = (x / screen_width() * 28.0) as i32;
+        let row = (y / screen_height() * 28.0) as i32;
+        for (r, c) in [
+            (row, col),
+            (row + 1, col),
+            (row - 1, col),
+            (row, col + 1),
+            (row, col - 1),
+        ] {
+            if (0..28).contains(&r) && (0..28).contains(&c) {
+                data[r as usize * 28 + c as usize] = 1.0;
+            }
+        }
     }
     draw_digit(data, win);
 }

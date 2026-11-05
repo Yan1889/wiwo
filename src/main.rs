@@ -60,7 +60,10 @@ async fn main() {
     train.randomize_mnist();
     test.randomize_mnist();
 
-    let mut net = NeuralNetBuilder::new(vec![784, 16, 16, 10]).build();
+    let mut net = NeuralNetBuilder::new(vec![784, 1024, 512, 256, 10])
+        .set_activation_functions(vec![ReLU, ReLU, ReLU])
+        .build();
+
     net.train(&mut train, 20);
     println!("accuracy: {}", net.accuracy(&test));
 
