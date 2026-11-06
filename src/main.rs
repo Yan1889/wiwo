@@ -14,6 +14,7 @@ use macroquad::{
     prelude::*,
     window::{clear_background, next_frame},
 };
+use ordered_float::OrderedFloat;
 
 use crate::{
     data::Dataset,
@@ -55,26 +56,40 @@ const KEY_NUMBERS: [KeyCode; 10] = [
 
 #[macroquad::main(conf)]
 async fn main() {
-    let (mut train, test) = Dataset::load_csv_train("data/kaggle/train_processed.csv").split();
-    let mut net = NeuralNetBuilder::new(vec![11, 16, 16, 2])
-        .set_activation_functions(vec![Tanh, Tanh])
+    let (mut train, test) =
+        Dataset::load_csv_train("data/kaggle-competition/mnist/processed/train.csv").split();
+    let mut net = NeuralNetBuilder::new(vec![784, 256, 256, 10])
+        .set_activation_functions(vec![ReLU, ReLU])
         .set_batch_size(1)
         .set_momentum(0.0)
         .set_learning_rate(0.01)
         .build();
 
-    dbg!(net.accuracy(&test));
-    dbg!(net.accuracy(&train));
-    net.train(&mut train, 10_000);
-    dbg!(net.accuracy(&test));
-    dbg!(net.accuracy(&train));
+    dbg!(train.data.len(), test.data.len());
 
-    let finally = Dataset::load_csv_test("data/kaggle/test_processed.csv");
-    let f = File::create("titanic_output.csv").unwrap();
+    println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
+    println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
+    net.train(&mut train, 10);
+    println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
+    println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
+
+    let finally = Dataset::load_csv_test("data/kaggle-competition/mnist/processed/test.csv");
+    let f = File::create("mnist_output.csv").unwrap();
     let mut bw = BufWriter::new(f);
-    writeln!(bw, "PassengerId,Survived").unwrap();
+    writeln!(bw, "ImageId,Label").unwrap();
     for (id, input) in finally {
         let class = net.forward(Matrix::new_row(input));
-        writeln!(bw, "{id},{}", (class.data[1] > 0.5) as u8).unwrap();
+        writeln!(
+            bw,
+            "{id},{}",
+            class
+                .data
+                .into_iter()
+                .enumerate()
+                .max_by_key(|(_, x)| OrderedFloat(*x))
+                .unwrap()
+                .0
+        )
+        .unwrap();
     }
 }
