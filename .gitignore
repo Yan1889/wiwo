@@ -1,1 +1,5 @@
 /target
+data/kaggle-competition/mnist/original/test.csv
+data/kaggle-competition/mnist/original/train.csv
+data/kaggle-competition/mnist/processed/test.csv
+data/kaggle-competition/mnist/processed/train.csv
