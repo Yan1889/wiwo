@@ -68,6 +68,76 @@ impl Dataset {
         self
     }
 
+    pub fn get_titanic() -> Self {
+        let csv = std::fs::read_to_string("data/titanic/train.csv").unwrap();
+        let mut data = Vec::<(Vec<f64>, usize)>::new();
+        for l in csv.lines().skip(1) {
+            let row = l.split(',').collect::<Vec<&str>>();
+            let label = row[1].parse::<usize>().unwrap();
+            let (class1, class2, class3) = Self::parse_class(row[2]);
+            let gender = Self::parse_gender(row[5]);
+            let age = Self::parse_age(row[6]);
+            let sib_sp = row[7].parse::<f64>().unwrap();
+            let parch = row[8].parse::<f64>().unwrap();
+            let fare = Self::parse_fare(row[10]);
+            let (embarked_c, embarked_q, embarked_s) = Self::parse_embarked(row[12]);
+            let input = vec![
+                class1, class2, class3, gender, age, sib_sp, parch, fare, embarked_c, embarked_q,
+                embarked_s,
+            ];
+            data.push((input, label));
+        }
+        Self::new(data, 2)
+    }
+
+    pub fn get_titanic_test() -> Vec<(usize, Vec<f64>)> {
+        let mut res = vec![];
+        let csv = std::fs::read_to_string("data/titanic/test.csv").unwrap();
+        for l in csv.lines().skip(1) {
+            let row = l.split(',').collect::<Vec<&str>>();
+            let id = row[0].parse::<usize>().unwrap();
+            let (class1, class2, class3) = Self::parse_class(row[1]);
+            let gender = Self::parse_gender(row[4]);
+            let age = Self::parse_age(row[5]);
+            let sib_sp = row[6].parse::<f64>().unwrap();
+            let parch = row[7].parse::<f64>().unwrap();
+            let fare = Self::parse_fare(row[9]);
+            let (embarked_c, embarked_q, embarked_s) = Self::parse_embarked(row[11]);
+            let input = vec![
+                class1, class2, class3, gender, age, sib_sp, parch, fare, embarked_c, embarked_q,
+                embarked_s,
+            ];
+            res.push((id, input));
+        }
+        res
+    }
+    fn parse_class(x: &str) -> (f64, f64, f64) {
+        match x {
+            "1" => (1.0, 0.0, 0.0),
+            "2" => (0.0, 1.0, 0.0),
+            "3" => (0.0, 0.0, 1.0),
+            _ => unreachable!(),
+        }
+    }
+    fn parse_age(x: &str) -> f64 {
+        x.parse::<f64>().unwrap_or(30.0) / 100.0
+    }
+    fn parse_gender(x: &str) -> f64 {
+        (x == "male") as u8 as f64
+    }
+    fn parse_fare(x: &str) -> f64 {
+        (1.0 + x.parse::<f64>().unwrap_or(0.0)).ln() / 6.0
+    }
+    fn parse_embarked(x: &str) -> (f64, f64, f64) {
+        match x {
+            "C" => (1.0, 0.0, 0.0),
+            "Q" => (0.0, 1.0, 0.0),
+            "S" => (0.0, 0.0, 1.0),
+            "" => (0.0, 0.0, 0.0),
+            _ => unreachable!(),
+        }
+    }
+
     /// 4D -> {0, 1, 2, 3}
     pub fn get_iris() -> Self {
         let csv = std::fs::read_to_string("data/iris.csv").unwrap();
