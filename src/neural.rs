@@ -6,6 +6,7 @@ use std::{
 };
 
 use itertools::Itertools;
+use ordered_float::OrderedFloat;
 
 use crate::{data::Dataset, linalg::Matrix};
 
@@ -155,6 +156,16 @@ impl NeuralNet {
             batch_size,
             momentum,
         }
+    }
+
+    pub fn classify(&self, input: Vec<f64>) -> usize {
+        self.forward(Matrix::new_row(input))
+            .data
+            .into_iter()
+            .enumerate()
+            .max_by_key(|x| OrderedFloat(x.1))
+            .unwrap()
+            .0
     }
 
     pub fn forward(&self, mut xs: Matrix) -> Matrix {

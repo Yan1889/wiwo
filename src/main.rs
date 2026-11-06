@@ -56,20 +56,27 @@ const KEY_NUMBERS: [KeyCode; 10] = [
 
 // #[macroquad::main(conf)]
 fn main() {
-    let (mut train, test) = Dataset::get_mnist();
-    let mut net = NeuralNetBuilder::new(vec![784, 512, 512, 10])
-        .set_activation_functions(vec![ReLU, ReLU])
-        .set_batch_size(1)
-        .set_momentum(0.0)
-        .set_learning_rate(0.01)
-        .build();
-    // let mut net = NeuralNet::from_file("output/first.network");
+    // let (mut train, test) = Dataset::get_mnist();
+    let finally = Dataset::load_csv_test("data/kaggle-competition/mnist/processed/test.csv");
+    // let mut net = NeuralNetBuilder::new(vec![784, 512, 512, 10])
+    //     .set_activation_functions(vec![ReLU, ReLU])
+    //     .set_batch_size(1)
+    //     .set_momentum(0.0)
+    //     .set_learning_rate(0.01)
+    //     .build();
+    let mut net = NeuralNet::from_file("output/mnist-98_6%-accuracy.network");
 
-    println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
-    println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
-    net.train(&mut train, 1);
-    println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
-    println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
+    let mut bw = BufWriter::new(File::create("mnist_output.csv").unwrap());
+    writeln!(bw, "ImageId,Label").unwrap();
+    for (id, input) in finally {
+        writeln!(bw, "{id},{}", net.classify(input)).unwrap();
+    }
+
+    // println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
+    // println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
+    // net.train(&mut train, 1);
+    // println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
+    // println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
 
     // net.save_to_file("output/mnist.network");
 }
