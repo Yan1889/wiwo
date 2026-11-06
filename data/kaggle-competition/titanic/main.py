@@ -22,14 +22,14 @@ def map_age(x: str, default: float) -> float:
 TRAIN
 """
 
-df = pd.read_csv("data/train.csv")
+df = pd.read_csv("original/train.csv")
 
 # we use: Survived,Pclass,Sex,Age,SibSp,Parch,Fare,Embarked
 
 # Feature #1: Pclass
-df["Pclass_1"] = df["Pclass"].map(lambda x: x == 1)
-df["Pclass_2"] = df["Pclass"].map(lambda x: x == 2)
-df["Pclass_3"] = df["Pclass"].map(lambda x: x == 3)
+df["Pclass_1"] = df["Pclass"].map(lambda x: 1 if x == 1 else 0)
+df["Pclass_2"] = df["Pclass"].map(lambda x: 1 if x == 2 else 0)
+df["Pclass_3"] = df["Pclass"].map(lambda x: 1 if x == 3 else 0)
 
 # Feature #2: Sex {0, 1}
 df["Sex"] = df["Sex"].map(map_sex)
@@ -49,9 +49,9 @@ df["Fare"] = df["Fare"] / df["Fare"].max()
 df["Fare"] = df["Fare"].fillna(0.5)
 
 # Feature #7: Embarked
-df["Embarked_C"] = df["Embarked"].map(lambda x: x == "C")
-df["Embarked_Q"] = df["Embarked"].map(lambda x: x == "Q")
-df["Embarked_S"] = df["Embarked"].map(lambda x: x == "S")
+df["Embarked_C"] = df["Embarked"].map(lambda x: 1 if x == "C" else 0)
+df["Embarked_Q"] = df["Embarked"].map(lambda x: 1 if x == "Q" else 0)
+df["Embarked_S"] = df["Embarked"].map(lambda x: 1 if x == "S" else 0)
 
 # drop some of the original columns
 df = df.drop(
@@ -66,21 +66,21 @@ df = df.drop(
     axis=1,
 )
 
-df.to_csv("output/train_processed.csv", index=False)
+df.to_csv("processed/train_processed.csv", index=False)
 
 
 """
 TEST
 """
 
-df = pd.read_csv("data/test.csv")
+df = pd.read_csv("original/test.csv")
 
 # we use: Survived,Pclass,Sex,Age,SibSp,Parch,Fare,Embarked
 
 # Feature #1: Pclass
-df["Pclass_1"] = df["Pclass"].map(lambda x: x == 1)
-df["Pclass_2"] = df["Pclass"].map(lambda x: x == 2)
-df["Pclass_3"] = df["Pclass"].map(lambda x: x == 3)
+df["Pclass_1"] = df["Pclass"].map(lambda x: 1 if x == 1 else 0)
+df["Pclass_2"] = df["Pclass"].map(lambda x: 1 if x == 2 else 0)
+df["Pclass_3"] = df["Pclass"].map(lambda x: 1 if x == 3 else 0)
 
 # Feature #2: Sex {0, 1}
 df["Sex"] = df["Sex"].map(map_sex)
@@ -100,9 +100,9 @@ df["Fare"] = df["Fare"] / df["Fare"].max()
 df["Fare"] = df["Fare"].fillna(0.5)
 
 # Feature #7: Embarked
-df["Embarked_C"] = df["Embarked"].map(lambda x: x == "C")
-df["Embarked_Q"] = df["Embarked"].map(lambda x: x == "Q")
-df["Embarked_S"] = df["Embarked"].map(lambda x: x == "S")
+df["Embarked_C"] = df["Embarked"].map(lambda x: 1 if x == "C" else 0)
+df["Embarked_Q"] = df["Embarked"].map(lambda x: 1 if x == "Q" else 0)
+df["Embarked_S"] = df["Embarked"].map(lambda x: 1 if x == "S" else 0)
 
 # drop some of the original columns
 df = df.drop(
@@ -116,4 +116,4 @@ df = df.drop(
     axis=1,
 )
 
-df.to_csv("output/test_processed.csv", index=False)
+df.to_csv("processed/test_processed.csv", index=False)
