@@ -1,4 +1,11 @@
-use std::time::Instant;
+use std::{
+    fmt::Display,
+    fs::File,
+    io::{BufRead, BufReader, BufWriter, Write},
+    time::Instant,
+};
+
+use itertools::Itertools;
 
 use crate::{data::Dataset, linalg::Matrix};
 
@@ -47,6 +54,20 @@ impl ActivationFunction {
             Self::Sigmoid => Self::sigmoid(x) * (1.0 - Self::sigmoid(x)),
             Self::Tanh => 1.0 - x.tanh() * x.tanh(),
         }
+    }
+    fn from_str(s: &str) -> Self {
+        match s {
+            "Tanh" => Self::Tanh,
+            "ReLU" => Self::ReLU,
+            "Sigmoid" => Self::Sigmoid,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl Display for ActivationFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
@@ -277,6 +298,73 @@ impl NeuralNet {
             }
         }
         println!("{epochs} epochs took {:?}", start.elapsed());
+    }
+
+    /// # File Format
+    /// learning rate
+    /// batch size
+    /// momentum
+    /// layer sizes
+    /// activation functions
+    /// biases for hidden layer #1
+    /// biases for hidden layer #2
+    /// ...
+    /// biases for output layer
+    /// weights #1
+    /// weights #2
+    /// ...
+    /// weights for output layer
+    pub fn from_file(filename: &str) -> Self {
+        let data = std::fs::read_to_string(filename).unwrap();
+        let mut it = data.lines();
+        let learning_rate = it.next().unwrap().parse::<f64>().unwrap();
+        let momentum = it.next().unwrap().parse::<f64>().unwrap();
+        let batch_size = it.next().unwrap().parse::<usize>().unwrap();
+        let layer_sizes = it
+            .next()
+            .unwrap()
+            .split(',')
+            .map(|s| s.parse::<usize>().unwrap())
+            .collect::<Vec<usize>>();
+        let afs = it
+            .next()
+            .unwrap()
+            .split(',')
+            .map(ActivationFunction::from_str)
+            .collect::<Vec<ActivationFunction>>();
+        assert_eq!(layer_sizes.len(), afs.len() + 2);
+        let mut biases = Vec::new();
+        for i in 1..layer_sizes.len() {
+            let b = Matrix::read_from_file(&mut it);
+            assert_eq!(b.dimensions(), (1, layer_sizes[i]));
+            biases.push(b);
+        }
+        let mut weights = Vec::new();
+        for i in 1..layer_sizes.len() {
+            let w = Matrix::read_from_file(&mut it);
+            assert_eq!(w.dimensions(), (layer_sizes[i - 1], layer_sizes[i]));
+            weights.push(w);
+        }
+        Self {
+            learning_rate,
+            momentum,
+            batch_size,
+            layer_sizes,
+            afs,
+            biases,
+            weights,
+        }
+    }
+
+    pub fn save_to_file(&self, filename: &str) {
+        let mut bw = BufWriter::new(File::create(filename).unwrap());
+        writeln!(bw, "{}", self.learning_rate).unwrap();
+        writeln!(bw, "{}", self.momentum).unwrap();
+        writeln!(bw, "{}", self.batch_size).unwrap();
+        writeln!(bw, "{}", self.layer_sizes.iter().join(",")).unwrap();
+        writeln!(bw, "{}", self.afs.iter().join(",")).unwrap();
+        self.biases.iter().for_each(|b| b.write_to_file(&mut bw));
+        self.weights.iter().for_each(|w| w.write_to_file(&mut bw));
     }
 
     pub fn assert_matching_dataset(&self, dataset: &Dataset) {

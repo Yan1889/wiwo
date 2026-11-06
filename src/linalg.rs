@@ -1,5 +1,11 @@
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use std::{
+    fs::File,
+    io::{BufReader, BufWriter, Read, Write},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+    str::Lines,
+};
 
+use itertools::Itertools;
 use rand::RngExt;
 
 #[derive(Clone, Debug)]
@@ -33,6 +39,25 @@ impl Matrix {
             cols: xs.len(),
             data: xs,
         }
+    }
+    /// # File layout:
+    /// rows,cols
+    /// data (comma separated)
+    pub fn write_to_file(&self, bw: &mut BufWriter<File>) {
+        writeln!(bw, "{},{}", self.rows, self.cols).unwrap();
+        writeln!(bw, "{}", self.data.iter().join(",")).unwrap();
+    }
+    pub fn read_from_file(it: &mut Lines) -> Self {
+        let mut dimensions = it.next().unwrap().split(',');
+        let rows = dimensions.next().unwrap().parse::<usize>().unwrap();
+        let cols = dimensions.next().unwrap().parse::<usize>().unwrap();
+        let data = it
+            .next()
+            .unwrap()
+            .split(',')
+            .map(|s| s.parse::<f64>().unwrap())
+            .collect();
+        Self { rows, cols, data }
     }
     pub fn map(&self, f: impl Fn(f64) -> f64) -> Self {
         let mut data = vec![0.0; self.rows * self.cols];

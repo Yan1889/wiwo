@@ -21,7 +21,7 @@ use crate::{
     linalg::Matrix,
     neural::{
         ActivationFunction::{self, ReLU, Tanh},
-        NeuralNetBuilder,
+        NeuralNet, NeuralNetBuilder,
     },
     visual::{WindowPos, draw_digit, paint_brush},
 };
@@ -57,18 +57,19 @@ const KEY_NUMBERS: [KeyCode; 10] = [
 #[macroquad::main(conf)]
 async fn main() {
     let (mut train, test) = Dataset::load_csv_train("data/iris/processed.csv").split();
-    let mut net = NeuralNetBuilder::new(vec![4, 8, 8, 3])
-        .set_activation_functions(vec![ReLU, ReLU])
-        .set_batch_size(1)
-        .set_momentum(0.0)
-        .set_learning_rate(0.01)
-        .build();
-
-    dbg!(train.data.len(), test.data.len());
+    // let mut net = NeuralNetBuilder::new(vec![4, 8, 8, 3])
+    //     .set_activation_functions(vec![ReLU, ReLU])
+    //     .set_batch_size(1)
+    //     .set_momentum(0.0)
+    //     .set_learning_rate(0.01)
+    //     .build();
+    let mut net = NeuralNet::from_file("output/first.network");
 
     println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
     println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
-    net.train(&mut train, 1000);
+    net.train(&mut train, 100);
     println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
     println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
+
+    // net.save_to_file("output/first.network");
 }
