@@ -302,8 +302,8 @@ impl NeuralNet {
 
     /// # File Format
     /// learning rate
-    /// batch size
     /// momentum
+    /// batch size
     /// layer sizes
     /// activation functions
     /// biases for hidden layer #1
@@ -345,6 +345,7 @@ impl NeuralNet {
             assert_eq!(w.dimensions(), (layer_sizes[i - 1], layer_sizes[i]));
             weights.push(w);
         }
+        assert!(it.next().is_none());
         Self {
             learning_rate,
             momentum,
@@ -357,7 +358,7 @@ impl NeuralNet {
     }
 
     pub fn save_to_file(&self, filename: &str) {
-        let mut bw = BufWriter::new(File::create(filename).unwrap());
+        let mut bw = BufWriter::new(File::create_new(filename).unwrap());
         writeln!(bw, "{}", self.learning_rate).unwrap();
         writeln!(bw, "{}", self.momentum).unwrap();
         writeln!(bw, "{}", self.batch_size).unwrap();

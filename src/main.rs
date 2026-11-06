@@ -54,22 +54,22 @@ const KEY_NUMBERS: [KeyCode; 10] = [
     KeyCode::Key9,
 ];
 
-#[macroquad::main(conf)]
-async fn main() {
-    let (mut train, test) = Dataset::load_csv_train("data/iris/processed.csv").split();
-    // let mut net = NeuralNetBuilder::new(vec![4, 8, 8, 3])
-    //     .set_activation_functions(vec![ReLU, ReLU])
-    //     .set_batch_size(1)
-    //     .set_momentum(0.0)
-    //     .set_learning_rate(0.01)
-    //     .build();
-    let mut net = NeuralNet::from_file("output/first.network");
+// #[macroquad::main(conf)]
+fn main() {
+    let (mut train, test) = Dataset::get_mnist();
+    let mut net = NeuralNetBuilder::new(vec![784, 512, 512, 10])
+        .set_activation_functions(vec![ReLU, ReLU])
+        .set_batch_size(1)
+        .set_momentum(0.0)
+        .set_learning_rate(0.01)
+        .build();
+    // let mut net = NeuralNet::from_file("output/first.network");
 
     println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
     println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
-    net.train(&mut train, 100);
+    net.train(&mut train, 1);
     println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
     println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
 
-    // net.save_to_file("output/first.network");
+    // net.save_to_file("output/mnist.network");
 }
