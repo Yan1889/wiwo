@@ -138,6 +138,32 @@ impl Dataset {
         }
     }
 
+    /// first column is label, the rest are inputs in [0; 1]
+    pub fn load_csv_train(filename: &str) -> Self {
+        let csv = std::fs::read_to_string(filename).unwrap();
+        let mut data = Vec::new();
+        let mut max_label = 0;
+        for l in csv.lines().skip(1) {
+            let mut it = l.split(',');
+            let label = it.next().unwrap().parse::<usize>().unwrap();
+            max_label = max_label.max(label);
+            data.push((it.map(|x| x.parse::<f64>().unwrap()).collect(), label));
+        }
+        Self::new(data, max_label + 1)
+    }
+
+    /// first column is id, the rest are inputs in [0; 1]
+    pub fn load_csv_test(filename: &str) -> Vec<(usize, Vec<f64>)> {
+        let csv = std::fs::read_to_string(filename).unwrap();
+        let mut data = Vec::new();
+        for l in csv.lines().skip(1) {
+            let mut it = l.split(',');
+            let id = it.next().unwrap().parse::<usize>().unwrap();
+            data.push((id, it.map(|x| x.parse::<f64>().unwrap()).collect()));
+        }
+        data
+    }
+
     /// 4D -> {0, 1, 2, 3}
     pub fn get_iris() -> Self {
         let csv = std::fs::read_to_string("data/iris.csv").unwrap();

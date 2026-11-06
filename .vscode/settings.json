@@ -1,9 +1,11 @@
 {
     "cSpell.words": [
+        "kaggle",
         "Lerp",
         "linalg",
         "macroquad",
         "mnist",
+        "pclass",
         "relu",
         "setosa",
         "softmax",
