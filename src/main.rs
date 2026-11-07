@@ -53,10 +53,17 @@ async fn main() {
 async fn play() {
     let net = NeuralNet::from_file("output/mnist-augmented.network");
     let mut data = vec![0.0; 784];
-    let [win_digit, win_prediction] = WindowPos::split_10_v();
+    let [win_digit, win_prediction, win_heatmap, _] = WindowPos::split_quad();
+
     loop {
         paint_brush(&mut data, win_digit);
         draw_prediction(&data, &net, win_prediction);
+
+        let mut sum = net.input_gradients(data.clone());
+        for i in 0..784 {
+            sum[i] *= data[i];
+        }
+        draw_digit(&sum, true, win_heatmap);
         next_frame().await;
     }
 }
@@ -86,7 +93,7 @@ async fn inspect_human_digits() {
         let actual = human.data[i].1;
         let prediction = net.classify(human.data[i].0.clone());
 
-        draw_digit(&human.data[i].0, win);
+        draw_digit(&human.data[i].0, false, win);
         draw_text(format!("actual: {actual}"), 50.0, 50.0, 30.0, GREEN);
         draw_text(
             format!("predicted ({}): {prediction}", prediction == actual),

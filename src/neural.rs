@@ -197,6 +197,47 @@ impl NeuralNet {
         xs
     }
 
+    pub fn input_gradients(&self, input: Vec<f64>) -> Vec<f64> {
+        assert_eq!(input.len(), self.dimensions().0);
+
+        // in the beginning we have an 'a'
+        // layer = (w, z, a)
+        let mut a = Matrix::new_row(input.clone());
+        let mut z = vec![];
+        for l in 0..self.depth() {
+            let mut z_curr = &a * &self.weights[l];
+            z_curr += &self.biases[l];
+            z.push(z_curr);
+            if l < self.depth() - 1 {
+                a = self.afs[l].map(z.last().unwrap());
+            }
+        }
+
+        // arg-max
+        let c = z
+            .last()
+            .unwrap()
+            .data
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, x)| OrderedFloat(**x))
+            .unwrap()
+            .0;
+
+        let mut deltas = Matrix::new_row(vec![0.0; self.dimensions().1]);
+        deltas.data[c] = 1.0;
+
+        for l in (0..self.depth()).rev() {
+            // delta is the loss w.r.t. the last activations
+            // make delta the loss w.r.t. the weighted sum z by multiplying with f'(z)
+            if l < self.depth() - 1 {
+                deltas = deltas.element_mul(&self.afs[l].map_derivative(&z[l]));
+            }
+            deltas = &deltas * &self.weights[l].transposed();
+        }
+        deltas.data
+    }
+
     pub fn accuracy(&self, dataset: &Dataset) -> f64 {
         self.assert_matching_dataset(dataset);
 

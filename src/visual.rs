@@ -295,7 +295,12 @@ pub fn draw_colored_plane_knn(dataset: &mut Dataset, k: usize, win: WindowPos) {
     }
 }
 
-pub fn draw_digit(data: &[f64], win: WindowPos) {
+pub fn draw_digit(data: &[f64], normalize: bool, win: WindowPos) {
+    let min = data.iter().copied().fold(f64::MAX, f64::min) as f32;
+    let max = data.iter().copied().fold(f64::MIN, f64::max) as f32;
+
+    let factor = max.max(-min);
+
     win.clear(BLACK);
     for row in 0..28 {
         for col in 0..28 {
@@ -309,7 +314,15 @@ pub fn draw_digit(data: &[f64], win: WindowPos) {
                 win.map_y(y),
                 w * win.w * screen_width(),
                 h * win.h * screen_height(),
-                Color::new(a, a, a, 1.0),
+                if normalize {
+                    if a < 0.0 {
+                        Color::new(-a / factor, 0.0, 0.0, 1.0)
+                    } else {
+                        Color::new(0.0, 0.0, a / factor, 1.0)
+                    }
+                } else {
+                    Color::new(a, a, a, 1.0)
+                },
             );
         }
     }
@@ -354,7 +367,7 @@ pub fn paint_brush(data: &mut [f64], win: WindowPos) {
     if is_key_pressed(KeyCode::Backspace) {
         data.fill(0.0);
     }
-    draw_digit(data, win);
+    draw_digit(data, false, win);
 }
 
 pub fn draw_prediction(data: &[f64], net: &NeuralNet, win: WindowPos) {
