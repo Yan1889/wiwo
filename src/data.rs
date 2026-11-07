@@ -231,7 +231,11 @@ impl Dataset {
         Self::new(data, 10)
     }
 
+    /// angle (in radians), scale and translation
     pub fn transform_digit(digit: &mut [f64], a: f64, s: f64, (x_t, y_t): (f64, f64)) {
+        // input validation
+        assert_eq!(digit.len(), 784);
+
         let mut new = vec![0.0; 784];
 
         for row_dst in 0..28 {
@@ -253,16 +257,36 @@ impl Dataset {
                 // then translate back
                 (x_src, y_src) = (x_src + 13.5, y_src + 13.5);
 
-                // finally we have the coordinates of the source pixel
-                let row_src = y_src.round() as i32;
-                let col_src = x_src.round() as i32;
-                if (0..28).contains(&row_src) && (0..28).contains(&col_src) {
-                    let i_src = row_src as usize * 28 + col_src as usize;
-                    // indexing is safe
-                    new[i_dst] = digit[i_src];
+                // linear interpolation:
+                let x0 = x_src.floor();
+                let y0 = y_src.floor();
+                let fx = x_src - x0;
+                let fy = y_src - y0;
+
+                let neighbors = [
+                    (y0, x0),
+                    (y0, x0 + 1.0),
+                    (y0 + 1.0, x0),
+                    (y0 + 1.0, x0 + 1.0),
+                ];
+                let weights = [
+                    (1.0 - fx) * (1.0 - fy),
+                    fx * (1.0 - fy),
+                    (1.0 - fx) * fy,
+                    fx * fy,
+                ];
+                for i in 0..4 {
+                    let (row_src, col_src) = neighbors[i];
+                    let row_src = row_src as i32;
+                    let col_src = col_src as i32;
+                    if (0..28).contains(&row_src) && (0..28).contains(&col_src) {
+                        let i_src = row_src as usize * 28 + col_src as usize;
+                        // indexing is safe
+                        new[i_dst] += digit[i_src] * weights[i];
+                    }
                 }
                 // a little noise
-                new[i_dst] += rand::random_range(0.0..0.06);
+                new[i_dst] += rand::random_range(0.0..0.1);
             }
         }
         digit.copy_from_slice(&new);
