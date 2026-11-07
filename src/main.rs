@@ -1,4 +1,5 @@
 use std::{
+    f32::consts::PI,
     fs::File,
     io::{BufWriter, Write},
     sync::{Arc, Mutex},
@@ -12,6 +13,7 @@ use ::rand::random;
 use macroquad::{
     color::GREEN,
     prelude::*,
+    ui::{hash, root_ui},
     window::{clear_background, next_frame},
 };
 use ordered_float::OrderedFloat;
@@ -54,36 +56,38 @@ const KEY_NUMBERS: [KeyCode; 10] = [
     KeyCode::Key9,
 ];
 
-// #[macroquad::main(conf)]
-fn main() {
-    let (mut train, mut test) = Dataset::get_mnist();
-    train.randomize_mnist();
-    test.randomize_mnist();
+#[macroquad::main(conf)]
+async fn main() {
+    let (train, _) = Dataset::get_mnist();
 
-    // let finally = Dataset::load_csv_test("data/kaggle-competition/mnist/processed/test.csv");
-    let mut net = NeuralNetBuilder::new(vec![784, 512, 512, 10])
-        .set_activation_functions(vec![ReLU, ReLU])
-        .set_batch_size(1)
-        .set_momentum(0.0)
-        .set_learning_rate(0.001)
-        .build();
-    // let mut net = NeuralNet::from_file("output/mnist-98_6%-accuracy.network");
+    let digit_original = train.data[0].0.clone();
 
-    // let mut bw = BufWriter::new(File::create("mnist_output.csv").unwrap());
-    // writeln!(bw, "ImageId,Label").unwrap();
-    // for (id, input) in finally {
-    //     writeln!(bw, "{id},{}", net.classify(input)).unwrap();
-    // }
+    let net = NeuralNet::from_file("output/mnist-augmented.network");
+    let win = WindowPos::full();
 
-    println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
-    println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
-    net.train(&mut train, 20);
-    println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
-    println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
+    let mut angle = 0.0;
+    let mut scale = 1.0;
+    let mut transform = (0.0, 0.0);
 
-    let confusion_matrix = net.create_confusion_matrix(&test);
-    let mut bw = BufWriter::new(File::create("output/mnist-confusion-strong.matrix").unwrap());
-    confusion_matrix.write_to_file_pretty(&mut bw);
+    loop {
+        let mut digit_modified = digit_original.clone();
+        Dataset::transform_digit(
+            &mut digit_modified,
+            angle as f64,
+            scale as f64,
+            (transform.0 as f64, transform.1 as f64),
+        );
 
-    net.save_to_file("output/mnist-augmented.network");
+        root_ui().slider(hash!(), "angle", -PI / 1.0..PI / 1.0, &mut angle);
+        root_ui().slider(hash!(), "scale", 0.3..2.0, &mut scale);
+        root_ui().slider(hash!(), "transform x", -9.0..9.0, &mut transform.0);
+        root_ui().slider(hash!(), "transform y", -9.0..9.0, &mut transform.1);
+
+        draw_digit(&digit_modified, win);
+
+        if is_key_pressed(KeyCode::Enter) {
+            println!("predicted: {}", net.classify(digit_modified))
+        }
+        next_frame().await
+    }
 }

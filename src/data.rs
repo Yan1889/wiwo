@@ -231,50 +231,53 @@ impl Dataset {
         Self::new(data, 10)
     }
 
+    pub fn transform_digit(digit: &mut [f64], a: f64, s: f64, (x_t, y_t): (f64, f64)) {
+        let mut new = vec![0.0; 784];
+
+        for row_dst in 0..28 {
+            for col_dst in 0..28 {
+                let i_dst = row_dst * 28 + col_dst;
+
+                // first translate to center
+                let mut x_src = col_dst as f64 - 13.5;
+                let mut y_src = row_dst as f64 - 13.5;
+                // then translate (inverted)
+                (x_src, y_src) = (x_src - x_t, y_src - y_t);
+                // then scale (inverted)
+                (x_src, y_src) = (x_src / s, y_src / s);
+                // then rotate (inverted)
+                (x_src, y_src) = (
+                    x_src * a.cos() + y_src * a.sin(),
+                    -x_src * a.sin() + y_src * a.cos(),
+                );
+                // then translate back
+                (x_src, y_src) = (x_src + 13.5, y_src + 13.5);
+
+                // finally we have the coordinates of the source pixel
+                let row_src = y_src.round() as i32;
+                let col_src = x_src.round() as i32;
+                if (0..28).contains(&row_src) && (0..28).contains(&col_src) {
+                    let i_src = row_src as usize * 28 + col_src as usize;
+                    // indexing is safe
+                    new[i_dst] = digit[i_src];
+                }
+                // a little noise
+                new[i_dst] += rand::random_range(0.0..0.06);
+            }
+        }
+        digit.copy_from_slice(&new);
+    }
+
     pub fn randomize_mnist(&mut self) {
         assert_eq!(self.dimensions(), (784, 10));
-        for (image, _) in &mut self.data {
+        for (digit, _) in &mut self.data {
             // 10° random angle
-            let a = rand::random_range(-PI / 18.0..PI / 18.0);
+            let angle = rand::random_range(-PI / 18.0..PI / 18.0);
             // random scale
-            let s = rand::random_range(0.8..1.2);
+            let scale = rand::random_range(0.8..1.2);
             // 5px random shift
             let translation = (rand::random_range(-3.0..3.0), rand::random_range(-3.0..3.0));
-
-            let mut new = vec![0.0; 784];
-
-            for row_dst in 0..28 {
-                for col_dst in 0..28 {
-                    let i_dst = row_dst * 28 + col_dst;
-
-                    // first translate to center
-                    let mut x_src = col_dst as f64 - 13.5;
-                    let mut y_src = row_dst as f64 - 13.5;
-                    // then translate (inverted)
-                    (x_src, y_src) = (x_src - translation.0, y_src - translation.1);
-                    // then scale (inverted)
-                    (x_src, y_src) = (x_src / s, y_src / s);
-                    // then rotate (inverted)
-                    (x_src, y_src) = (
-                        x_src * a.cos() + y_src * a.sin(),
-                        -x_src * a.sin() + y_src * a.cos(),
-                    );
-                    // then translate back
-                    (x_src, y_src) = (x_src + 13.5, y_src + 13.5);
-
-                    // finally we have the coordinates of the source pixel
-                    let row_src = y_src.round() as i32;
-                    let col_src = x_src.round() as i32;
-                    if (0..28).contains(&row_src) && (0..28).contains(&col_src) {
-                        let i_src = row_src as usize * 28 + col_src as usize;
-                        // indexing is safe
-                        new[i_dst] = image[i_src];
-                    }
-                    // a little noise
-                    new[i_dst] += rand::random_range(0.0..0.06);
-                }
-            }
-            *image = new;
+            Self::transform_digit(digit, angle, scale, translation);
         }
     }
 
