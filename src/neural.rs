@@ -158,6 +158,17 @@ impl NeuralNet {
         }
     }
 
+    pub fn create_confusion_matrix(&self, dataset: &Dataset) -> Matrix {
+        self.assert_matching_dataset(dataset);
+
+        let mut res = Matrix::new_zero(dataset.classes, dataset.classes);
+        for (input, target) in &dataset.data {
+            let output = self.classify(input.clone());
+            *res.get_mut(*target, output) += 1.0;
+        }
+        res
+    }
+
     pub fn classify(&self, input: Vec<f64>) -> usize {
         self.forward(Matrix::new_row(input))
             .data

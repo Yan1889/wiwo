@@ -59,6 +59,18 @@ impl Matrix {
             .collect();
         Self { rows, cols, data }
     }
+    pub fn write_to_file_pretty(&self, bw: &mut BufWriter<File>) {
+        for r in 0..self.rows {
+            writeln!(
+                bw,
+                "{}",
+                self.data[r * self.cols..(r + 1) * self.cols]
+                    .iter()
+                    .join(",")
+            )
+            .unwrap();
+        }
+    }
     pub fn map(&self, f: impl Fn(f64) -> f64) -> Self {
         let mut data = vec![0.0; self.rows * self.cols];
         for i in 0..self.rows * self.cols {
