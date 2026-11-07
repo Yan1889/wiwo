@@ -299,8 +299,8 @@ impl Dataset {
             let angle = rand::random_range(-PI / 18.0..PI / 18.0);
             // random scale
             let scale = rand::random_range(0.8..1.2);
-            // 5px random shift
-            let translation = (rand::random_range(-3.0..3.0), rand::random_range(-3.0..3.0));
+            // 4px random shift
+            let translation = (rand::random_range(-4.0..4.0), rand::random_range(-4.0..4.0));
             Self::transform_digit(digit, angle, scale, translation);
         }
     }

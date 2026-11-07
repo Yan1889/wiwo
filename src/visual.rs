@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use macroquad::{
     color::{BLACK, BLUE, Color, GRAY, GREEN, RED, WHITE},
-    input::{is_mouse_button_down, mouse_position},
+    input::{KeyCode, is_key_pressed, is_mouse_button_down, mouse_position},
     shapes::{draw_circle, draw_line, draw_rectangle},
     text::draw_text,
     window::{screen_height, screen_width},
@@ -325,9 +325,17 @@ pub fn paint_brush(data: &mut [f64], win: WindowPos) {
             (row, col - 1),
         ] {
             if (0..28).contains(&r) && (0..28).contains(&c) {
-                data[r as usize * 28 + c as usize] = 1.0;
+                let loc = &mut data[r as usize * 28 + c as usize];
+                if r == row && c == col {
+                    *loc = 1.0;
+                } else {
+                    *loc = (*loc + 0.3).min(1.0);
+                }
             }
         }
+    }
+    if is_key_pressed(KeyCode::Backspace) {
+        data.fill(0.0);
     }
     draw_digit(data, win);
 }
