@@ -232,7 +232,12 @@ impl Dataset {
     }
 
     /// angle (in radians), scale and translation
-    pub fn transform_digit(digit: &mut [f64], a: f64, s: f64, (x_t, y_t): (f64, f64)) {
+    pub fn transform_digit(
+        digit: &mut [f64],
+        a: f64,
+        (x_s, y_s): (f64, f64),
+        (x_t, y_t): (f64, f64),
+    ) {
         // input validation
         assert_eq!(digit.len(), 784);
 
@@ -248,7 +253,7 @@ impl Dataset {
                 // then translate (inverted)
                 (x_src, y_src) = (x_src - x_t, y_src - y_t);
                 // then scale (inverted)
-                (x_src, y_src) = (x_src / s, y_src / s);
+                (x_src, y_src) = (x_src / x_s, y_src / y_s);
                 // then rotate (inverted)
                 (x_src, y_src) = (
                     x_src * a.cos() + y_src * a.sin(),
@@ -286,7 +291,7 @@ impl Dataset {
                     }
                 }
                 // a little noise
-                new[i_dst] += rand::random_range(0.0..0.1);
+                new[i_dst] += rand::random_range(0.0..0.05);
             }
         }
         digit.copy_from_slice(&new);
@@ -295,12 +300,12 @@ impl Dataset {
     pub fn randomize_mnist(&mut self) {
         assert_eq!(self.dimensions(), (784, 10));
         for (digit, _) in &mut self.data {
-            // 10° random angle
-            let angle = rand::random_range(-PI / 18.0..PI / 18.0);
+            // ±15° random angle
+            let angle = rand::random_range(-15.0 * PI / 180.0..15.0 * PI / 180.0);
             // random scale
-            let scale = rand::random_range(0.8..1.2);
-            // 4px random shift
-            let translation = (rand::random_range(-4.0..4.0), rand::random_range(-4.0..4.0));
+            let scale = (rand::random_range(0.85..1.2), rand::random_range(0.85..1.2));
+            // 3px random shift
+            let translation = (rand::random_range(-3.0..3.0), rand::random_range(-3.0..3.0));
             Self::transform_digit(digit, angle, scale, translation);
         }
     }
