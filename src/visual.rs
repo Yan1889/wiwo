@@ -317,6 +317,19 @@ pub fn paint_brush(data: &mut [f64], win: WindowPos) {
         let (x, y) = mouse_position();
         let col = (x / screen_width() * 28.0) as i32;
         let row = (y / screen_height() * 28.0) as i32;
+        for r in row - 1..=row + 1 {
+            for c in col - 1..=col + 1 {
+                if !(0..28).contains(&r) || !(0..28).contains(&c) {
+                    continue;
+                }
+                let i = r as usize * 28 + c as usize;
+                data[i] = match (r == row, c == col) {
+                    (true, true) => 1.0,
+                    (true, false) | (false, true) => (data[i] + 0.1).min(1.0),
+                    (false, false) => (data[i] + 0.03).min(1.0),
+                };
+            }
+        }
         for (r, c) in [
             (row, col),
             (row + 1, col),

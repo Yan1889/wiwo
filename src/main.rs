@@ -1,6 +1,6 @@
 use std::{
     f32::consts::PI,
-    fs::{File, OpenOptions},
+    fs::{File, FileType, OpenOptions},
     io::{BufWriter, Write},
     sync::{Arc, Mutex},
     thread,
@@ -51,9 +51,22 @@ async fn main() {
 
 async fn inspect_human_digits() {
     let human = Dataset::load_csv_train("output/human-test.csv");
+
     let net = NeuralNet::from_file("output/mnist-augmented.network");
 
-    println!("accuracy on human: {:.2}%", net.accuracy(&human));
+    // println!("accuracy on human: {:.2}%", net.accuracy(&human));
+
+    for filename in std::fs::read_dir("output").unwrap() {
+        let s = filename.unwrap();
+        if s.file_type().unwrap().is_file() && s.path().extension().unwrap() == "network" {
+            let net = NeuralNet::from_file(&s.path().into_os_string().into_string().unwrap());
+            println!(
+                "{}: {:.2}%",
+                s.file_name().into_string().unwrap(),
+                net.accuracy(&human)
+            );
+        }
+    }
 
     let win = WindowPos::full();
     let mut i = 0;
@@ -83,6 +96,8 @@ async fn collect_human_digits() {
     let win = WindowPos::full();
     let mut label = 0;
 
+    let net = NeuralNet::from_file("output/mnist-augmented.network");
+
     let mut bw = BufWriter::new(
         OpenOptions::new()
             .append(true)
@@ -92,7 +107,15 @@ async fn collect_human_digits() {
 
     loop {
         paint_brush(&mut data, win);
-        draw_text(label.to_string(), 30.0, 30.0, 50.0, GREEN);
+        draw_text(format!("goal: {label}"), 30.0, 50.0, 50.0, GREEN);
+        draw_text(
+            format!("thinks: {}", net.classify(data.clone())),
+            30.0,
+            100.0,
+            50.0,
+            GREEN,
+        );
+
         if is_key_pressed(KeyCode::Enter) {
             writeln!(bw, "{label},{}", data.iter().join(",")).unwrap();
             bw.flush().unwrap();
