@@ -56,19 +56,18 @@ const KEY_NUMBERS: [KeyCode; 10] = [
 
 // #[macroquad::main(conf)]
 fn main() {
-    let (mut train, test) = Dataset::get_mnist();
-    // let finally = Dataset::load_csv_test("data/kaggle-competition/mnist/processed/test.csv");
-    // let mut net = NeuralNetBuilder::new(vec![784, 512, 512, 10])
-    //     .set_activation_functions(vec![ReLU, ReLU])
-    //     .set_batch_size(1)
-    //     .set_momentum(0.0)
-    //     .set_learning_rate(0.01)
-    //     .build();
-    let mut net = NeuralNet::from_file("output/mnist-98_6%-accuracy.network");
+    let (mut train, mut test) = Dataset::get_mnist();
+    train.randomize_mnist();
+    test.randomize_mnist();
 
-    let confusion_matrix = net.create_confusion_matrix(&test);
-    let mut bw = BufWriter::new(File::create("output/mnist-confusion.matrix").unwrap());
-    confusion_matrix.write_to_file_pretty(&mut bw);
+    // let finally = Dataset::load_csv_test("data/kaggle-competition/mnist/processed/test.csv");
+    let mut net = NeuralNetBuilder::new(vec![784, 512, 512, 10])
+        .set_activation_functions(vec![ReLU, ReLU])
+        .set_batch_size(1)
+        .set_momentum(0.0)
+        .set_learning_rate(0.001)
+        .build();
+    // let mut net = NeuralNet::from_file("output/mnist-98_6%-accuracy.network");
 
     // let mut bw = BufWriter::new(File::create("mnist_output.csv").unwrap());
     // writeln!(bw, "ImageId,Label").unwrap();
@@ -76,11 +75,15 @@ fn main() {
     //     writeln!(bw, "{id},{}", net.classify(input)).unwrap();
     // }
 
-    // println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
-    // println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
-    // net.train(&mut train, 1);
-    // println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
-    // println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
+    println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
+    println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
+    net.train(&mut train, 20);
+    println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
+    println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
 
-    // net.save_to_file("output/mnist.network");
+    let confusion_matrix = net.create_confusion_matrix(&test);
+    let mut bw = BufWriter::new(File::create("output/mnist-confusion-strong.matrix").unwrap());
+    confusion_matrix.write_to_file_pretty(&mut bw);
+
+    net.save_to_file("output/mnist-augmented.network");
 }
