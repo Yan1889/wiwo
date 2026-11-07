@@ -6,6 +6,7 @@ use macroquad::{
     text::draw_text,
     window::{screen_height, screen_width},
 };
+use ordered_float::OrderedFloat;
 
 use crate::{algos::knn_classify, data::Dataset, linalg::Matrix, neural::NeuralNet};
 
@@ -44,6 +45,9 @@ impl WindowPos {
             Self::new(0.5, 0.5, 0.5, 0.0),
             Self::new(0.5, 0.5, 0.5, 0.5),
         ]
+    }
+    pub fn split_10_v() -> [Self; 2] {
+        [Self::new(0.8, 1.0, 0.0, 0.0), Self::new(0.2, 1.0, 0.8, 0.0)]
     }
     pub fn map_x(self, x: f32) -> f32 {
         (x * self.w + self.dw) * screen_width()
@@ -315,8 +319,8 @@ pub fn paint_brush(data: &mut [f64], win: WindowPos) {
     if is_mouse_button_down(macroquad::input::MouseButton::Left) {
         // update data
         let (x, y) = mouse_position();
-        let col = (x / screen_width() * 28.0) as i32;
-        let row = (y / screen_height() * 28.0) as i32;
+        let col = (x / screen_width() / win.w * 28.0) as i32;
+        let row = (y / screen_height() / win.h * 28.0) as i32;
         for r in row - 1..=row + 1 {
             for c in col - 1..=col + 1 {
                 if !(0..28).contains(&r) || !(0..28).contains(&c) {
@@ -351,4 +355,24 @@ pub fn paint_brush(data: &mut [f64], win: WindowPos) {
         data.fill(0.0);
     }
     draw_digit(data, win);
+}
+
+pub fn draw_prediction(data: &[f64], net: &NeuralNet, win: WindowPos) {
+    win.clear(WHITE);
+    let prediction = net
+        .forward(Matrix::new_row(data.to_vec()))
+        .data
+        .into_iter()
+        .enumerate()
+        .sorted_by_key(|(_, x)| OrderedFloat(-x))
+        .collect::<Vec<(usize, f64)>>();
+    for i in 0..10 {
+        draw_text(
+            format!("{}: {:.2}%", prediction[i].0, prediction[i].1 * 100.0),
+            win.map_x(0.0),
+            win.map_y((i as f32 + 0.5) / 10.0),
+            50.0,
+            BLACK,
+        );
+    }
 }

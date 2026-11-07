@@ -10,7 +10,7 @@ use std::{
 use itertools::Itertools;
 
 use macroquad::{
-    color::GREEN,
+    color::{BLUE, GREEN},
     input::{KeyCode, is_key_pressed},
     text::draw_text,
     ui::{hash, root_ui},
@@ -26,7 +26,7 @@ use crate::{
         ActivationFunction::{self, ReLU, Tanh},
         NeuralNet, NeuralNetBuilder,
     },
-    visual::{WindowPos, draw_digit, paint_brush},
+    visual::{WindowPos, draw_digit, draw_prediction, paint_brush},
 };
 
 mod algos;
@@ -38,15 +38,27 @@ mod visual;
 pub fn conf() -> Conf {
     Conf {
         window_title: "Neural net".to_string(),
-        window_width: 700,
-        window_height: 700,
+        window_width: 1100,
+        window_height: 1000,
         ..Default::default()
     }
 }
 #[macroquad::main(conf)]
 async fn main() {
     // inspect_human_digits().await;
-    collect_human_digits().await;
+    // collect_human_digits().await;
+    play().await;
+}
+
+async fn play() {
+    let net = NeuralNet::from_file("output/mnist-augmented.network");
+    let mut data = vec![0.0; 784];
+    let [win_digit, win_prediction] = WindowPos::split_10_v();
+    loop {
+        paint_brush(&mut data, win_digit);
+        draw_prediction(&data, &net, win_prediction);
+        next_frame().await;
+    }
 }
 
 async fn inspect_human_digits() {
@@ -96,8 +108,6 @@ async fn collect_human_digits() {
     let win = WindowPos::full();
     let mut label = 0;
 
-    let net = NeuralNet::from_file("output/mnist-augmented.network");
-
     let mut bw = BufWriter::new(
         OpenOptions::new()
             .append(true)
@@ -108,13 +118,6 @@ async fn collect_human_digits() {
     loop {
         paint_brush(&mut data, win);
         draw_text(format!("goal: {label}"), 30.0, 50.0, 50.0, GREEN);
-        draw_text(
-            format!("thinks: {}", net.classify(data.clone())),
-            30.0,
-            100.0,
-            50.0,
-            GREEN,
-        );
 
         if is_key_pressed(KeyCode::Enter) {
             writeln!(bw, "{label},{}", data.iter().join(",")).unwrap();
