@@ -40,13 +40,13 @@ pub fn conf() -> Conf {
 }
 #[macroquad::main(conf)]
 async fn main() {
-    // inspect_human_digits("yan").await;
-    // collect_human_digits("yan").await;
-    play().await;
+    inspect_human_digits("emil").await;
+    // collect_human_digits("mama").await;
+    // play().await;
     // sliders().await;
 
     // train_model();
-    // test_on_human("yan");
+    // test_on_human("mama");
 }
 
 fn test_on_human(filename: &str) {
@@ -126,28 +126,12 @@ async fn sliders() {
 
 async fn play() {
     let net = NeuralNet::from_file("output/sgd-0_001---572953263.network");
-    let mut mnist = Dataset::get_mnist().0;
-    mnist.randomize_mnist();
-    let mut data = mnist.data[0].0.clone();
-    let [win_digit, win_prediction, win_heatmap, win_heatmap_smooth] = WindowPos::split_quad();
-
-    let mut c = None;
+    let mut data = vec![0.0; 784];
+    let [win_digit, win_prediction] = WindowPos::split_10_v();
 
     loop {
         paint_brush(&mut data, win_digit);
         draw_prediction(&data, &net, win_prediction);
-
-        if let Some(x) = get_char_pressed()
-            && x.is_numeric()
-        {
-            c = Some(x as usize - '0' as usize);
-        }
-        if !is_any_key_down() {
-            c = None;
-        }
-
-        heatmap_overlay(&data, &net, c, win_heatmap);
-        // draw_heatmap_smooth(&data, &net, c, win_heatmap_smooth);
 
         next_frame().await;
     }
@@ -158,7 +142,12 @@ async fn inspect_human_digits(filename: &str) {
 
     let net = NeuralNet::from_file("output/mnist-augmented.network");
 
-    println!("accuracy on human: {:.2}%", net.accuracy(&human));
+    net.create_confusion_matrix(&human)
+        .write_to_file_pretty(&mut BufWriter::new(
+            File::create(format!("output/human-{filename}.matrix")).unwrap(),
+        ));
+
+    println!("accuracy on human: {:.2}%", net.accuracy(&human) * 100.0);
 
     let win = WindowPos::full();
     let mut i = 0;
@@ -177,6 +166,9 @@ async fn inspect_human_digits(filename: &str) {
             GREEN,
         );
 
+        if is_key_pressed(KeyCode::Backspace) && i > 0 {
+            i -= 1;
+        }
         if is_key_pressed(KeyCode::Enter) {
             i += 1;
         }
