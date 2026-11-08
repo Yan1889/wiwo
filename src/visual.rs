@@ -295,13 +295,12 @@ pub fn draw_colored_plane_knn(dataset: &mut Dataset, k: usize, win: WindowPos) {
     }
 }
 
-pub fn draw_digit(data: &[f64], normalize: bool, win: WindowPos) {
+pub fn draw_digit(data: &[f64], normalize: bool, alpha: f32, win: WindowPos) {
     let min = data.iter().copied().fold(f64::MAX, f64::min) as f32;
     let max = data.iter().copied().fold(f64::MIN, f64::max) as f32;
 
     let factor = max.max(-min);
 
-    win.clear(BLACK);
     for row in 0..28 {
         for col in 0..28 {
             let x = col as f32 / 28.0;
@@ -316,12 +315,12 @@ pub fn draw_digit(data: &[f64], normalize: bool, win: WindowPos) {
                 h * win.h * screen_height(),
                 if normalize {
                     if a < 0.0 {
-                        Color::new(-a / factor, 0.0, 0.0, 1.0)
+                        Color::new(-a / factor, 0.0, 0.0, alpha)
                     } else {
-                        Color::new(0.0, 0.0, a / factor, 1.0)
+                        Color::new(0.0, 0.0, a / factor, alpha)
                     }
                 } else {
-                    Color::new(a, a, a, 1.0)
+                    Color::new(a, a, a, alpha)
                 },
             );
         }
@@ -367,7 +366,8 @@ pub fn paint_brush(data: &mut [f64], win: WindowPos) {
     if is_key_pressed(KeyCode::Backspace) {
         data.fill(0.0);
     }
-    draw_digit(data, false, win);
+    win.clear(BLACK);
+    draw_digit(data, false, 1.0, win);
 }
 
 pub fn draw_prediction(data: &[f64], net: &NeuralNet, win: WindowPos) {
@@ -395,7 +395,8 @@ pub fn draw_heatmap(data: &[f64], net: &NeuralNet, class: Option<usize>, win: Wi
     for i in 0..784 {
         // image[i] *= data[i];
     }
-    draw_digit(&image, true, win);
+    win.clear(BLACK);
+    draw_digit(&image, true, 1.0, win);
     draw_text(
         format!(
             "heatmap w.r.t. {:?}",
@@ -411,7 +412,7 @@ pub fn draw_heatmap(data: &[f64], net: &NeuralNet, class: Option<usize>, win: Wi
 pub fn draw_heatmap_smooth(data: &[f64], net: &NeuralNet, class: Option<usize>, win: WindowPos) {
     let class = class.unwrap_or_else(|| net.classify(data.to_vec()));
 
-    let n = 30;
+    let n = 100;
     let mut image = vec![0.0; 784];
     for _ in 0..n {
         let mut input = data.to_vec();
@@ -424,9 +425,30 @@ pub fn draw_heatmap_smooth(data: &[f64], net: &NeuralNet, class: Option<usize>, 
         }
     }
 
-    draw_digit(&image, true, win);
+    win.clear(BLACK);
+    draw_digit(&image, true, 1.0, win);
     draw_text(
         format!("smooth heatmap w.r.t. {class}"),
+        win.map_x(0.0),
+        win.map_y(0.1),
+        30.0,
+        GREEN,
+    );
+}
+
+pub fn heatmap_overlay(data: &[f64], net: &NeuralNet, class: Option<usize>, win: WindowPos) {
+    let mut image = net.input_gradients(data.to_vec(), class);
+    for i in 0..784 {
+        // image[i] *= data[i];
+    }
+    win.clear(BLACK);
+    draw_digit(data, false, 1.0, win);
+    draw_digit(&image, true, 0.7, win);
+    draw_text(
+        format!(
+            "heatmap w.r.t. {:?}",
+            class.unwrap_or_else(|| net.classify(data.to_vec()))
+        ),
         win.map_x(0.0),
         win.map_y(0.1),
         30.0,

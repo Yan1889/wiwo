@@ -8,7 +8,7 @@ use std::{
 use itertools::Itertools;
 
 use macroquad::{
-    color::GREEN,
+    color::{BLACK, GREEN},
     input::{KeyCode, get_char_pressed, is_any_key_down, is_key_pressed},
     text::draw_text,
     ui::{hash, root_ui},
@@ -19,7 +19,8 @@ use crate::{
     data::Dataset,
     neural::{ActivationFunction::ReLU, NeuralNet, NeuralNetBuilder},
     visual::{
-        WindowPos, draw_digit, draw_heatmap, draw_heatmap_smooth, draw_prediction, paint_brush,
+        WindowPos, draw_digit, draw_heatmap, draw_heatmap_smooth, draw_prediction, heatmap_overlay,
+        paint_brush,
     },
 };
 
@@ -107,7 +108,8 @@ async fn sliders() {
             (scale.0 as f64, scale.1 as f64),
             (translate.0 as f64, translate.1 as f64),
         );
-        draw_digit(&image, false, win);
+        win.clear(BLACK);
+        draw_digit(&image, false, 1.0, win);
         root_ui().slider(
             hash!(),
             "angle",
@@ -123,8 +125,10 @@ async fn sliders() {
 }
 
 async fn play() {
-    let net = NeuralNet::from_file("output/mnist-augmented.network");
-    let mut data = vec![0.0; 784];
+    let net = NeuralNet::from_file("output/sgd-0_001---572953263.network");
+    let mut mnist = Dataset::get_mnist().0;
+    mnist.randomize_mnist();
+    let mut data = mnist.data[0].0.clone();
     let [win_digit, win_prediction, win_heatmap, win_heatmap_smooth] = WindowPos::split_quad();
 
     let mut c = None;
@@ -142,8 +146,8 @@ async fn play() {
             c = None;
         }
 
-        draw_heatmap(&data, &net, c, win_heatmap);
-        draw_heatmap_smooth(&data, &net, c, win_heatmap_smooth);
+        heatmap_overlay(&data, &net, c, win_heatmap);
+        // draw_heatmap_smooth(&data, &net, c, win_heatmap_smooth);
 
         next_frame().await;
     }
@@ -162,7 +166,8 @@ async fn inspect_human_digits(filename: &str) {
         let actual = human.data[i].1;
         let prediction = net.classify(human.data[i].0.clone());
 
-        draw_digit(&human.data[i].0, false, win);
+        win.clear(BLACK);
+        draw_digit(&human.data[i].0, false, 1.0, win);
         draw_text(format!("actual: {actual}"), 50.0, 50.0, 30.0, GREEN);
         draw_text(
             format!("predicted ({}): {prediction}", prediction == actual),
