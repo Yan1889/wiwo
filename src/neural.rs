@@ -197,7 +197,7 @@ impl NeuralNet {
         xs
     }
 
-    pub fn input_gradients(&self, input: Vec<f64>) -> Vec<f64> {
+    pub fn input_gradients(&self, input: Vec<f64>, wrt_class: Option<usize>) -> Vec<f64> {
         assert_eq!(input.len(), self.dimensions().0);
 
         // in the beginning we have an 'a'
@@ -214,15 +214,16 @@ impl NeuralNet {
         }
 
         // arg-max
-        let c = z
-            .last()
-            .unwrap()
-            .data
-            .iter()
-            .enumerate()
-            .max_by_key(|(_, x)| OrderedFloat(**x))
-            .unwrap()
-            .0;
+        let c = wrt_class.unwrap_or_else(|| {
+            z.last()
+                .unwrap()
+                .data
+                .iter()
+                .enumerate()
+                .max_by_key(|(_, x)| OrderedFloat(**x))
+                .unwrap()
+                .0
+        });
 
         let mut deltas = Matrix::new_row(vec![0.0; self.dimensions().1]);
         deltas.data[c] = 1.0;

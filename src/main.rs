@@ -9,7 +9,7 @@ use itertools::Itertools;
 
 use macroquad::{
     color::GREEN,
-    input::{KeyCode, is_key_pressed},
+    input::{KeyCode, get_char_pressed, is_any_key_down, is_key_pressed},
     text::draw_text,
     ui::{hash, root_ui},
     window::{Conf, next_frame},
@@ -18,7 +18,9 @@ use macroquad::{
 use crate::{
     data::Dataset,
     neural::{ActivationFunction::ReLU, NeuralNet, NeuralNetBuilder},
-    visual::{WindowPos, draw_digit, draw_prediction, paint_brush},
+    visual::{
+        WindowPos, draw_digit, draw_heatmap, draw_heatmap_smooth, draw_prediction, paint_brush,
+    },
 };
 
 mod algos;
@@ -30,16 +32,16 @@ mod visual;
 pub fn conf() -> Conf {
     Conf {
         window_title: "Neural net".to_string(),
-        window_width: 500,
-        window_height: 500,
+        window_width: 700,
+        window_height: 700,
         ..Default::default()
     }
 }
 #[macroquad::main(conf)]
 async fn main() {
-    inspect_human_digits("yan").await;
+    // inspect_human_digits("yan").await;
     // collect_human_digits("yan").await;
-    // play().await;
+    play().await;
     // sliders().await;
 
     // train_model();
@@ -48,17 +50,23 @@ async fn main() {
 
 fn test_on_human(filename: &str) {
     let human = Dataset::load_csv_train(&format!("output/human-test/{filename}.csv"));
+    let mut best = 0.0;
+    let mut best_file = "<none>".to_string();
     for file in read_dir("output").unwrap() {
         let p = file.unwrap().path();
         if p.extension().is_some_and(|p| p == "network") {
             let net = NeuralNet::from_file(&p.clone().into_string().unwrap());
-            println!(
-                "{:<35}: {:.2}%",
-                p.file_name().unwrap().to_os_string().into_string().unwrap(),
-                net.accuracy(&human) * 100.0
-            );
+            let name = p.file_name().unwrap().to_os_string().into_string().unwrap();
+            let accuracy = net.accuracy(&human);
+            println!("{name:<35}: {:.2}%", accuracy * 100.0);
+            if accuracy > best {
+                best = accuracy;
+                best_file = name;
+            }
         }
     }
+    println!("------");
+    println!("best: {best_file}, accuracy: {:.2}%", best * 100.0);
 }
 
 fn train_model() {
@@ -117,17 +125,26 @@ async fn sliders() {
 async fn play() {
     let net = NeuralNet::from_file("output/mnist-augmented.network");
     let mut data = vec![0.0; 784];
-    let [win_digit, win_prediction, win_heatmap, _] = WindowPos::split_quad();
+    let [win_digit, win_prediction, win_heatmap, win_heatmap_smooth] = WindowPos::split_quad();
+
+    let mut c = None;
 
     loop {
         paint_brush(&mut data, win_digit);
         draw_prediction(&data, &net, win_prediction);
 
-        let mut sum = net.input_gradients(data.clone());
-        for i in 0..784 {
-            sum[i] *= data[i];
+        if let Some(x) = get_char_pressed()
+            && x.is_numeric()
+        {
+            c = Some(x as usize - '0' as usize);
         }
-        draw_digit(&sum, true, win_heatmap);
+        if !is_any_key_down() {
+            c = None;
+        }
+
+        draw_heatmap(&data, &net, c, win_heatmap);
+        draw_heatmap_smooth(&data, &net, c, win_heatmap_smooth);
+
         next_frame().await;
     }
 }

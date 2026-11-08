@@ -384,8 +384,52 @@ pub fn draw_prediction(data: &[f64], net: &NeuralNet, win: WindowPos) {
             format!("{}: {:.2}%", prediction[i].0, prediction[i].1 * 100.0),
             win.map_x(0.0),
             win.map_y((i as f32 + 0.5) / 10.0),
-            50.0,
+            30.0,
             BLACK,
         );
     }
+}
+
+pub fn draw_heatmap(data: &[f64], net: &NeuralNet, class: Option<usize>, win: WindowPos) {
+    let mut image = net.input_gradients(data.to_vec(), class);
+    for i in 0..784 {
+        // image[i] *= data[i];
+    }
+    draw_digit(&image, true, win);
+    draw_text(
+        format!(
+            "heatmap w.r.t. {:?}",
+            class.unwrap_or_else(|| net.classify(data.to_vec()))
+        ),
+        win.map_x(0.0),
+        win.map_y(0.1),
+        30.0,
+        GREEN,
+    );
+}
+
+pub fn draw_heatmap_smooth(data: &[f64], net: &NeuralNet, class: Option<usize>, win: WindowPos) {
+    let class = class.unwrap_or_else(|| net.classify(data.to_vec()));
+
+    let n = 30;
+    let mut image = vec![0.0; 784];
+    for _ in 0..n {
+        let mut input = data.to_vec();
+        for x in &mut input {
+            *x += rand::random_range(-0.5..0.5);
+        }
+        let addition = net.input_gradients(input, Some(class));
+        for i in 0..784 {
+            image[i] += addition[i] / n as f64; // * data[i];
+        }
+    }
+
+    draw_digit(&image, true, win);
+    draw_text(
+        format!("smooth heatmap w.r.t. {class}"),
+        win.map_x(0.0),
+        win.map_y(0.1),
+        30.0,
+        GREEN,
+    );
 }
