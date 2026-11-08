@@ -1,31 +1,23 @@
 use std::{
     f32::consts::PI,
-    fs::{File, FileType, OpenOptions, read_dir},
+    fs::{File, OpenOptions, read_dir},
     io::{BufWriter, Write},
-    sync::{Arc, Mutex},
-    thread,
-    time::Instant,
+    path::Path,
 };
 
 use itertools::Itertools;
 
 use macroquad::{
-    color::{BLUE, GREEN},
+    color::GREEN,
     input::{KeyCode, is_key_pressed},
     text::draw_text,
     ui::{hash, root_ui},
-    window::{Conf, clear_background, next_frame},
+    window::{Conf, next_frame},
 };
-
-use ordered_float::OrderedFloat;
 
 use crate::{
     data::Dataset,
-    linalg::Matrix,
-    neural::{
-        ActivationFunction::{self, ReLU, Tanh},
-        NeuralNet, NeuralNetBuilder,
-    },
+    neural::{ActivationFunction::ReLU, NeuralNet, NeuralNetBuilder},
     visual::{WindowPos, draw_digit, draw_prediction, paint_brush},
 };
 
@@ -38,28 +30,33 @@ mod visual;
 pub fn conf() -> Conf {
     Conf {
         window_title: "Neural net".to_string(),
-        window_width: 700,
-        window_height: 700,
+        window_width: 500,
+        window_height: 500,
         ..Default::default()
     }
 }
-// #[macroquad::main(conf)]
-fn main() {
-    // inspect_human_digits().await;
-    // collect_human_digits().await;
+#[macroquad::main(conf)]
+async fn main() {
+    inspect_human_digits("yan").await;
+    // collect_human_digits("yan").await;
     // play().await;
     // sliders().await;
-    train_model();
-    // test_on_human();
+
+    // train_model();
+    // test_on_human("yan");
 }
 
-fn test_on_human() {
-    let human = Dataset::load_csv_train("output/human-test.csv");
+fn test_on_human(filename: &str) {
+    let human = Dataset::load_csv_train(&format!("output/human-test/{filename}.csv"));
     for file in read_dir("output").unwrap() {
         let p = file.unwrap().path();
-        if p.extension().unwrap() == "network" {
+        if p.extension().is_some_and(|p| p == "network") {
             let net = NeuralNet::from_file(&p.clone().into_string().unwrap());
-            println!("{p:?}: {}", net.accuracy(&human));
+            println!(
+                "{:<35}: {:.2}%",
+                p.file_name().unwrap().to_os_string().into_string().unwrap(),
+                net.accuracy(&human) * 100.0
+            );
         }
     }
 }
@@ -135,8 +132,8 @@ async fn play() {
     }
 }
 
-async fn inspect_human_digits() {
-    let human = Dataset::load_csv_train("output/human-test.csv");
+async fn inspect_human_digits(filename: &str) {
+    let human = Dataset::load_csv_train(&format!("output/human-test/{filename}.csv"));
 
     let net = NeuralNet::from_file("output/mnist-augmented.network");
 
@@ -165,17 +162,23 @@ async fn inspect_human_digits() {
     }
 }
 
-async fn collect_human_digits() {
+async fn collect_human_digits(filename: &str) {
+    let filename = format!("output/human-test/{filename}.csv");
+
     let mut data = vec![0.0; 784];
     let win = WindowPos::full();
     let mut label = 0;
 
-    let mut bw = BufWriter::new(
-        OpenOptions::new()
-            .append(true)
-            .open("output/human-test.csv")
-            .unwrap(),
-    );
+    if !Path::new(&filename).exists() {
+        let mut bw = File::create_new(filename.clone()).unwrap();
+        write!(bw, "label").unwrap();
+        for i in 0..784 {
+            write!(bw, ",pixel{i}").unwrap();
+        }
+        writeln!(bw).unwrap();
+    }
+
+    let mut bw = BufWriter::new(OpenOptions::new().append(true).open(filename).unwrap());
 
     loop {
         paint_brush(&mut data, win);
