@@ -1,6 +1,6 @@
 use std::{
     f32::consts::PI,
-    fs::{File, FileType, OpenOptions},
+    fs::{File, FileType, OpenOptions, read_dir},
     io::{BufWriter, Write},
     sync::{Arc, Mutex},
     thread,
@@ -50,6 +50,18 @@ fn main() {
     // play().await;
     // sliders().await;
     train_model();
+    // test_on_human();
+}
+
+fn test_on_human() {
+    let human = Dataset::load_csv_train("output/human-test.csv");
+    for file in read_dir("output").unwrap() {
+        let p = file.unwrap().path();
+        if p.extension().unwrap() == "network" {
+            let net = NeuralNet::from_file(&p.clone().into_string().unwrap());
+            println!("{p:?}: {}", net.accuracy(&human));
+        }
+    }
 }
 
 fn train_model() {
@@ -61,16 +73,19 @@ fn train_model() {
         .set_activation_functions(vec![ReLU, ReLU])
         .set_momentum(0.0)
         .set_learning_rate(0.001)
-        .set_batch_size(64)
+        .set_batch_size(1)
         .build();
 
     println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
     println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
-    net.train(&mut train, 20);
+    net.train(&mut train, 30);
     println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
     println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
 
-    net.save_to_file("output/neural.network");
+    net.save_to_file(&format!(
+        "output/sgd-0_001---{}.network",
+        rand::random::<u32>()
+    ));
 }
 
 async fn sliders() {
@@ -125,19 +140,7 @@ async fn inspect_human_digits() {
 
     let net = NeuralNet::from_file("output/mnist-augmented.network");
 
-    // println!("accuracy on human: {:.2}%", net.accuracy(&human));
-
-    for filename in std::fs::read_dir("output").unwrap() {
-        let s = filename.unwrap();
-        if s.file_type().unwrap().is_file() && s.path().extension().unwrap() == "network" {
-            let net = NeuralNet::from_file(&s.path().into_os_string().into_string().unwrap());
-            println!(
-                "{}: {:.2}%",
-                s.file_name().into_string().unwrap(),
-                net.accuracy(&human)
-            );
-        }
-    }
+    println!("accuracy on human: {:.2}%", net.accuracy(&human));
 
     let win = WindowPos::full();
     let mut i = 0;
