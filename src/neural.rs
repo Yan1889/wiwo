@@ -6,6 +6,7 @@ use std::{
 };
 
 use itertools::Itertools;
+use macroquad::file::load_string;
 use ordered_float::OrderedFloat;
 
 use crate::{data::Dataset, linalg::Matrix};
@@ -378,8 +379,8 @@ impl NeuralNet {
     /// weights #2
     /// ...
     /// weights for output layer
-    pub fn from_file(filename: &str) -> Self {
-        let data = std::fs::read_to_string(filename).unwrap();
+    pub async fn from_file(filename: &str) -> Self {
+        let data = load_string(filename).await.unwrap();
         let mut it = data.lines();
         let learning_rate = it.next().unwrap().parse::<f64>().unwrap();
         let momentum = it.next().unwrap().parse::<f64>().unwrap();

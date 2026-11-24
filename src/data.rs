@@ -5,9 +5,8 @@ use std::{
     ops::Range,
 };
 
+use macroquad::{prelude::rand, rand::ChooseRandom};
 use ordered_float::OrderedFloat;
-use rand::{random, random_range, seq::SliceRandom};
-
 pub struct Dataset {
     pub data: Vec<(Vec<f64>, usize)>,
     pub classes: usize,
@@ -19,7 +18,7 @@ impl Dataset {
             assert_eq!(i1.len(), i2.len());
             assert!(*l1 < classes && *l2 < classes);
         }
-        data.shuffle(&mut rand::rng());
+        data.shuffle();
         Self { data, classes }
     }
 
@@ -35,7 +34,7 @@ impl Dataset {
             while t < r.end {
                 let mut point = f(t);
                 for x in &mut point {
-                    *x += rand::random_range(-noise..=noise);
+                    *x += rand::gen_range(-noise, noise);
                 }
                 data.push((point, i));
                 t += (r.end - r.start) / samples as f64;
@@ -291,7 +290,7 @@ impl Dataset {
                     }
                 }
                 // a little noise
-                new[i_dst] += rand::random_range(0.0..0.05);
+                new[i_dst] += rand::gen_range(0.0, 0.05);
             }
         }
         digit.copy_from_slice(&new);
@@ -301,11 +300,11 @@ impl Dataset {
         assert_eq!(self.dimensions(), (784, 10));
         for (digit, _) in &mut self.data {
             // ±15° random angle
-            let angle = rand::random_range(-15.0 * PI / 180.0..15.0 * PI / 180.0);
+            let angle = rand::gen_range(-15.0 * PI / 180.0, 15.0 * PI / 180.0);
             // random scale
-            let scale = (rand::random_range(0.85..1.2), rand::random_range(0.85..1.2));
+            let scale = (rand::gen_range(0.85, 1.2), rand::gen_range(0.85, 1.2));
             // 3px random shift
-            let translation = (rand::random_range(-3.0..3.0), rand::random_range(-3.0..3.0));
+            let translation = (rand::gen_range(-3.0, 3.0), rand::gen_range(-3.0, 3.0));
             Self::transform_digit(digit, angle, scale, translation);
         }
     }
@@ -447,14 +446,16 @@ impl Dataset {
                     // 75..100 => (1, 1)
                     (
                         vec![
-                            rand::random_range(
-                                if i < samples / 4 || (samples / 2..samples * 3 / 4).contains(&i) {
-                                    0.0..0.5
-                                } else {
-                                    0.5..1.0
-                                },
-                            ),
-                            rand::random_range(if i < samples / 2 { 0.0..0.5 } else { 0.5..1.0 }),
+                            if i < samples / 4 || (samples / 2..samples * 3 / 4).contains(&i) {
+                                rand::gen_range(0.0, 0.5)
+                            } else {
+                                rand::gen_range(0.5, 1.0)
+                            },
+                            if i < samples / 2 {
+                                rand::gen_range(0.0, 0.5)
+                            } else {
+                                rand::gen_range(0.5, 1.0)
+                            },
                         ],
                         ((samples / 4..samples * 3 / 4).contains(&i)) as usize,
                     )
@@ -479,8 +480,8 @@ impl Dataset {
             for _ in 0..50 {
                 data.push((
                     vec![
-                        x + rand::random_range(-0.1..0.1),
-                        y + rand::random_range(-0.1..0.1),
+                        x + rand::gen_range(-0.1, 0.1),
+                        y + rand::gen_range(-0.1, 0.1),
                     ],
                     i,
                 ));
@@ -509,7 +510,7 @@ impl Dataset {
     }
 
     pub fn shuffle(&mut self) {
-        self.data.shuffle(&mut rand::rng());
+        self.data.shuffle();
     }
 
     /// access to internal data via immutable slice

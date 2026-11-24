@@ -9,10 +9,16 @@ use itertools::Itertools;
 
 use macroquad::{
     color::{BLACK, GREEN},
-    input::{KeyCode, get_char_pressed, is_any_key_down, is_key_pressed},
+    input::{
+        KeyCode, MouseButton, get_char_pressed, is_any_key_down, is_key_pressed,
+        is_mouse_button_pressed, mouse_position,
+    },
+    math::{Rect, Vec2},
+    prelude::rand,
+    rand::srand,
     text::draw_text,
-    ui::{hash, root_ui},
-    window::{Conf, next_frame},
+    ui::{Skin, StyleBuilder, hash, root_ui, widgets},
+    window::{Conf, next_frame, screen_height, screen_width},
 };
 
 use crate::{
@@ -33,30 +39,30 @@ mod visual;
 pub fn conf() -> Conf {
     Conf {
         window_title: "Neural net".to_string(),
-        window_width: 700,
-        window_height: 700,
+        window_width: 625,
+        window_height: 500,
         ..Default::default()
     }
 }
 #[macroquad::main(conf)]
 async fn main() {
-    inspect_human_digits("emil").await;
+    // inspect_human_digits("emil").await;
     // collect_human_digits("mama").await;
-    // play().await;
+    play().await;
     // sliders().await;
 
     // train_model();
     // test_on_human("mama");
 }
 
-fn test_on_human(filename: &str) {
+async fn test_on_human(filename: &str) {
     let human = Dataset::load_csv_train(&format!("output/human-test/{filename}.csv"));
     let mut best = 0.0;
     let mut best_file = "<none>".to_string();
     for file in read_dir("output").unwrap() {
         let p = file.unwrap().path();
         if p.extension().is_some_and(|p| p == "network") {
-            let net = NeuralNet::from_file(&p.clone().into_string().unwrap());
+            let net = NeuralNet::from_file(&p.clone().into_string().unwrap()).await;
             let name = p.file_name().unwrap().to_os_string().into_string().unwrap();
             let accuracy = net.accuracy(&human);
             println!("{name:<35}: {:.2}%", accuracy * 100.0);
@@ -88,10 +94,7 @@ fn train_model() {
     println!("test accuracy: {:.2}%", net.accuracy(&test) * 100.0);
     println!("train accuracy: {:.2}%", net.accuracy(&train) * 100.0);
 
-    net.save_to_file(&format!(
-        "output/sgd-0_001---{}.network",
-        rand::random::<u32>()
-    ));
+    net.save_to_file(&format!("output/sgd-0_001---{}.network", rand::rand()));
 }
 
 async fn sliders() {
@@ -125,13 +128,37 @@ async fn sliders() {
 }
 
 async fn play() {
-    let net = NeuralNet::from_file("output/sgd-0_001---572953263.network");
+    let net = NeuralNet::from_file("output/sgd-0_001---572953263.network").await;
     let mut data = vec![0.0; 784];
     let [win_digit, win_prediction] = WindowPos::split_10_v();
-
     loop {
-        paint_brush(&mut data, win_digit);
         draw_prediction(&data, &net, win_prediction);
+
+        let bx = screen_width() * 0.8 - 200.0;
+        let by = screen_height() - 80.0;
+
+        let button_style = root_ui().style_builder().font_size(50).build();
+
+        let skin = Skin {
+            button_style,
+            ..root_ui().default_skin()
+        };
+        root_ui().push_skin(&skin);
+        if widgets::Button::new("Clear")
+            .position(Vec2::new(bx, by))
+            .size(Vec2::new(200.0, 80.0))
+            .ui(&mut root_ui())
+        {
+            data.fill(0.0);
+        }
+        root_ui().pop_skin();
+
+        let m = mouse_position();
+        if !Rect::new(bx, by, 200.0, 80.0).contains(Vec2::new(m.0, m.1)) {
+            paint_brush(&mut data, win_digit);
+        }
+        draw_digit(&data, false, 1.0, win_digit);
+        draw_text("Draw one digit here:", 40.0, 30.0, 30.0, GREEN);
 
         next_frame().await;
     }
@@ -140,7 +167,7 @@ async fn play() {
 async fn inspect_human_digits(filename: &str) {
     let human = Dataset::load_csv_train(&format!("output/human-test/{filename}.csv"));
 
-    let net = NeuralNet::from_file("output/mnist-augmented.network");
+    let net = NeuralNet::from_file("output/mnist-augmented.network").await;
 
     net.create_confusion_matrix(&human)
         .write_to_file_pretty(&mut BufWriter::new(
@@ -196,7 +223,7 @@ async fn collect_human_digits(filename: &str) {
 
     loop {
         paint_brush(&mut data, win);
-        draw_text(format!("goal: {label}"), 30.0, 50.0, 50.0, GREEN);
+        // draw_text(format!("goal: {label}"), 30.0, 50.0, 50.0, GREEN);
 
         if is_key_pressed(KeyCode::Enter) {
             writeln!(bw, "{label},{}", data.iter().join(",")).unwrap();

@@ -6,7 +6,7 @@ use std::{
 };
 
 use itertools::Itertools;
-use rand::RngExt;
+use macroquad::prelude::rand;
 
 #[derive(Clone, Debug)]
 pub struct Matrix {
@@ -29,7 +29,7 @@ impl Matrix {
     pub fn new_random(rows: usize, cols: usize) -> Self {
         let mut data = vec![0.0; rows * cols];
         for i in 0..rows * cols {
-            data[i] = rand::rng().random_range(-0.1..0.1);
+            data[i] = rand::gen_range(-0.1, 0.1);
         }
         Self { rows, cols, data }
     }

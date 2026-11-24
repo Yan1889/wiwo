@@ -2,7 +2,8 @@ use itertools::Itertools;
 use macroquad::{
     color::{BLACK, BLUE, Color, GRAY, GREEN, RED, WHITE},
     input::{KeyCode, is_key_pressed, is_mouse_button_down, mouse_position},
-    shapes::{draw_circle, draw_line, draw_rectangle},
+    prelude::rand,
+    shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_lines},
     text::draw_text,
     window::{screen_height, screen_width},
 };
@@ -333,6 +334,7 @@ pub fn paint_brush(data: &mut [f64], win: WindowPos) {
         let (x, y) = mouse_position();
         let col = (x / screen_width() / win.w * 28.0) as i32;
         let row = (y / screen_height() / win.h * 28.0) as i32;
+
         for r in row - 1..=row + 1 {
             for c in col - 1..=col + 1 {
                 if !(0..28).contains(&r) || !(0..28).contains(&c) {
@@ -366,8 +368,8 @@ pub fn paint_brush(data: &mut [f64], win: WindowPos) {
     if is_key_pressed(KeyCode::Backspace) {
         data.fill(0.0);
     }
-    win.clear(BLACK);
-    draw_digit(data, false, 1.0, win);
+    // win.clear(BLACK);
+    // draw_digit(data, false, 1.0, win);
 }
 
 pub fn draw_prediction(data: &[f64], net: &NeuralNet, win: WindowPos) {
@@ -379,11 +381,21 @@ pub fn draw_prediction(data: &[f64], net: &NeuralNet, win: WindowPos) {
         .enumerate()
         .sorted_by_key(|(_, x)| OrderedFloat(-x))
         .collect::<Vec<(usize, f64)>>();
+
+    draw_text("Prediction:", win.map_x(0.0), win.map_y(0.05), 30.0, GREEN);
+    draw_rectangle_lines(
+        win.map_x(0.0),
+        win.map_y(0.075),
+        win.w * screen_width(),
+        win.h * screen_height() / 11.0,
+        10.0,
+        RED,
+    );
     for i in 0..10 {
         draw_text(
             format!("{}: {:.2}%", prediction[i].0, prediction[i].1 * 100.0),
-            win.map_x(0.0),
-            win.map_y((i as f32 + 0.5) / 10.0),
+            win.dw * screen_width() + 10.0,
+            win.map_y((i as f32 + 1.5) / 11.0),
             30.0,
             BLACK,
         );
@@ -417,7 +429,7 @@ pub fn draw_heatmap_smooth(data: &[f64], net: &NeuralNet, class: Option<usize>, 
     for _ in 0..n {
         let mut input = data.to_vec();
         for x in &mut input {
-            *x += rand::random_range(-0.5..0.5);
+            *x += rand::gen_range(-0.5, 0.5);
         }
         let addition = net.input_gradients(input, Some(class));
         for i in 0..784 {
